@@ -14,11 +14,12 @@ const DEFAULT_CATEGORIES = [
   { name: 'Tea/Coffee',       emoji: '☕', color: 'hsl(28, 65%, 42%)',   order: 1, isDefault: true },
   { name: 'Bike/Auto/Cab',    emoji: '🚗', color: 'hsl(210, 80%, 55%)', order: 2, isDefault: true },
   { name: 'Petrol',           emoji: '⛽', color: 'hsl(350, 75%, 55%)',  order: 3, isDefault: true },
-  { name: 'Groceries',        emoji: '🛒', color: 'hsl(140, 60%, 42%)',  order: 4, isDefault: true },
-  { name: 'Health',           emoji: '💊', color: 'hsl(330, 65%, 55%)',  order: 5, isDefault: true },
-  { name: 'Entertainment',    emoji: '🎬', color: 'hsl(270, 65%, 58%)',  order: 6, isDefault: true },
-  { name: 'Rent & Utilities', emoji: '🏠', color: 'hsl(190, 80%, 45%)',  order: 7, isDefault: true },
-  { name: 'Other',            emoji: '📦', color: 'hsl(220, 15%, 52%)',  order: 8, isDefault: true },
+  { name: 'Coke Zero',        emoji: '🥤', color: 'hsl(195, 85%, 45%)',  order: 4, isDefault: true },
+  { name: 'Groceries',        emoji: '🛒', color: 'hsl(140, 60%, 42%)',  order: 5, isDefault: true },
+  { name: 'Health',           emoji: '💊', color: 'hsl(330, 65%, 55%)',  order: 6, isDefault: true },
+  { name: 'Entertainment',    emoji: '🎬', color: 'hsl(270, 65%, 58%)',  order: 7, isDefault: true },
+  { name: 'Rent & Utilities', emoji: '🏠', color: 'hsl(190, 80%, 45%)',  order: 8, isDefault: true },
+  { name: 'Other',            emoji: '📦', color: 'hsl(220, 15%, 52%)',  order: 9, isDefault: true },
 ];
 
 // ── Seed on first run ────────────────────────────────────────────────────────
@@ -37,6 +38,18 @@ async function seedIfEmpty() {
         emoji: '🏠',
         color: 'hsl(190, 80%, 45%)',
         order: maxOrder ? maxOrder.order + 1 : 7,
+        isDefault: true,
+      });
+    }
+    // Check if Coke Zero exists; if not, add it
+    const hasCoke = allCats.some(c => c.name.toLowerCase() === 'coke zero');
+    if (!hasCoke) {
+      const maxOrder2 = await db.categories.orderBy('order').last();
+      await db.categories.add({
+        name: 'Coke Zero',
+        emoji: '🥤',
+        color: 'hsl(195, 85%, 45%)',
+        order: maxOrder2 ? maxOrder2.order + 1 : 4,
         isDefault: true,
       });
     }

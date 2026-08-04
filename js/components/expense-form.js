@@ -1,7 +1,7 @@
 // js/components/expense-form.js — Add/Edit expense bottom sheet
 
 import { getCategories, addExpense, updateExpense, deleteExpense } from '../db.js';
-import { getTodayStr, formatAmount } from '../utils/date-utils.js';
+import { getTodayStr, formatAmount, getSmartDefaultDate, saveLastUsedDate } from '../utils/date-utils.js';
 import { showToast } from './toast.js';
 import { renderCategoryGrid } from './category-grid.js';
 
@@ -39,7 +39,7 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
   sheetEl.setAttribute('aria-label', isEdit ? 'Edit Expense' : 'Add Expense');
 
   const selectedCatId = expense?.categoryId ?? prefillCategory?.id ?? null;
-  const defaultDate   = expense?.date ?? getTodayStr();
+  const defaultDate   = expense?.date ?? getSmartDefaultDate();
   const catMap        = Object.fromEntries(categories.map(c => [c.id, c]));
 
   sheetEl.innerHTML = `
@@ -213,6 +213,8 @@ async function handleSave({ isEdit, expense, selectedCategoryGetter, catMap }) {
       await addExpense({ amount: amountVal, categoryId, note, customName, date });
       showToast(`${formatAmount(amountVal)} added ✓`, 'success');
     }
+    // Remember the date for 30 minutes
+    saveLastUsedDate(date);
     closeSheet();
     onSavedCb?.();
   } catch (err) {

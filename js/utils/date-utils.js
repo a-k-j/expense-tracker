@@ -117,3 +117,38 @@ export function shortDayDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
+
+// ── Sticky date picker helpers ──────────────────────────────────────────────
+const LAST_DATE_KEY     = 'spendSense_lastUsedDate';
+const LAST_DATE_TS_KEY  = 'spendSense_lastUsedDateTs';
+const STICKY_DURATION   = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Returns the last-used date if it was set within 30 minutes, otherwise today.
+ * Prevents returning a future date.
+ */
+export function getSmartDefaultDate() {
+  try {
+    const savedDate = localStorage.getItem(LAST_DATE_KEY);
+    const savedTs   = parseInt(localStorage.getItem(LAST_DATE_TS_KEY), 10);
+    if (savedDate && savedTs) {
+      const elapsed = Date.now() - savedTs;
+      if (elapsed < STICKY_DURATION) {
+        // Don't return a future date
+        const today = getTodayStr();
+        return savedDate <= today ? savedDate : today;
+      }
+    }
+  } catch (_) { /* localStorage unavailable — fall through */ }
+  return getTodayStr();
+}
+
+/**
+ * Save the date the user just used so the form remembers it for 30 minutes.
+ */
+export function saveLastUsedDate(dateStr) {
+  try {
+    localStorage.setItem(LAST_DATE_KEY, dateStr);
+    localStorage.setItem(LAST_DATE_TS_KEY, String(Date.now()));
+  } catch (_) { /* ignore */ }
+}
