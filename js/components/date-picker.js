@@ -80,6 +80,27 @@ export function createDatePicker(opts) {
 
     const dropdown = buildDropdown();
     wrapper.appendChild(dropdown);
+
+    // Position the dropdown using fixed positioning relative to the trigger
+    const rect = trigger.getBoundingClientRect();
+    const dropdownWidth = Math.min(280, window.innerWidth - 32);
+    const gap = 6;
+
+    // Vertical: prefer below, flip above if not enough space
+    let top = rect.bottom + gap;
+    const estimatedHeight = 310; // approximate calendar height
+    if (top + estimatedHeight > window.innerHeight && rect.top > estimatedHeight + gap) {
+      top = rect.top - estimatedHeight - gap;
+    }
+
+    // Horizontal: center on trigger, clamp to viewport
+    let left = rect.left + rect.width / 2 - dropdownWidth / 2;
+    left = Math.max(16, Math.min(left, window.innerWidth - dropdownWidth - 16));
+
+    dropdown.style.top = `${top}px`;
+    dropdown.style.left = `${left}px`;
+    dropdown.style.width = `${dropdownWidth}px`;
+
     requestAnimationFrame(() => dropdown.classList.add('open'));
 
     activeDropdown = dropdown;
