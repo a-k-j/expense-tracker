@@ -1104,13 +1104,33 @@ input, textarea, select {
   flex-shrink: 0;
 }
 
-.settings-item-info { flex: 1; }
+.settings-item-info {
+  flex: 1;
+  min-width: 0;
+}
 .settings-item-title { font-size: var(--text-base); font-weight: 600; }
-.settings-item-sub { font-size: var(--text-sm); color: var(--text-secondary); }
+.settings-item-sub {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .settings-item-arrow {
   color: var(--text-muted);
-  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+}
+
+.settings-item-arrow svg {
+  width: 18px;
+  height: 18px;
 }
 
 /* === Category Management === */
@@ -1138,13 +1158,20 @@ input, textarea, select {
 
 .category-manage-item-name {
   flex: 1;
+  min-width: 0;
   font-size: var(--text-base);
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .category-manage-item-actions {
   display: flex;
+  align-items: center;
   gap: var(--space-xs);
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 /* Drag handle */

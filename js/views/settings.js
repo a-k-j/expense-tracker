@@ -72,8 +72,8 @@ async function buildSettings(page) {
     <div class="settings-section">
       <div class="settings-section-title">Categories</div>
       <div id="cat-list"></div>
-      <button class="btn btn-secondary mt-sm w-full" id="add-cat-btn" style="gap:8px">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <button class="btn btn-secondary mt-sm w-full" id="add-cat-btn" style="gap:8px;justify-content:center;padding:14px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Add Category
       </button>
     </div>
@@ -88,11 +88,11 @@ async function buildSettings(page) {
             <div class="settings-item-title">Date Range</div>
           </div>
         </div>
-        <div class="settings-item" style="cursor:default;flex-wrap:wrap;gap:8px">
-          <input type="date" id="export-start" class="form-input" style="flex:1;min-width:130px"
+        <div class="settings-item" style="cursor:default;flex-wrap:wrap;gap:8px;align-items:center">
+          <input type="date" id="export-start" class="form-input" style="flex:1;min-width:120px"
                  value="${toDateStr(getMonthStart())}" aria-label="Export start date" />
-          <span style="color:var(--text-muted);font-weight:700;align-self:center">→</span>
-          <input type="date" id="export-end" class="form-input" style="flex:1;min-width:130px"
+          <span style="color:var(--text-muted);font-weight:700;display:flex;align-items:center;flex-shrink:0;padding:0 4px">→</span>
+          <input type="date" id="export-end" class="form-input" style="flex:1;min-width:120px"
                  value="${toDateStr(getMonthEnd())}" max="${toDateStr(new Date())}" aria-label="Export end date" />
         </div>
         <button class="settings-item" id="export-csv-btn">
@@ -101,7 +101,7 @@ async function buildSettings(page) {
             <div class="settings-item-title">Export as CSV</div>
             <div class="settings-item-sub">Opens in Excel / Google Sheets</div>
           </div>
-          <div class="settings-item-arrow">›</div>
+          <div class="settings-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
         </button>
       </div>
     </div>
@@ -116,7 +116,7 @@ async function buildSettings(page) {
             <div class="settings-item-title">Backup All Data</div>
             <div class="settings-item-sub">Downloads a .json file</div>
           </div>
-          <div class="settings-item-arrow">›</div>
+          <div class="settings-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
         </button>
         <label class="settings-item" id="import-json-label" style="cursor:pointer;">
           <div class="settings-item-icon" style="background:rgba(245,158,11,0.15)">📥</div>
@@ -124,7 +124,7 @@ async function buildSettings(page) {
             <div class="settings-item-title">Restore from Backup</div>
             <div class="settings-item-sub">Select a .json backup file</div>
           </div>
-          <div class="settings-item-arrow">›</div>
+          <div class="settings-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
           <input type="file" accept=".json" id="import-json-input" style="display:none" aria-label="Import JSON backup" />
         </label>
       </div>
@@ -140,7 +140,7 @@ async function buildSettings(page) {
             <div class="settings-item-title" style="color:var(--danger)">Clear All Data</div>
             <div class="settings-item-sub">Permanently deletes all expenses</div>
           </div>
-          <div class="settings-item-arrow" style="color:var(--danger)">›</div>
+          <div class="settings-item-arrow" style="color:var(--danger)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
         </button>
       </div>
     </div>
