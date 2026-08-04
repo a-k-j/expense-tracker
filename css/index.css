@@ -1147,6 +1147,45 @@ input, textarea, select {
   gap: var(--space-xs);
 }
 
+/* Drag handle */
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  flex-shrink: 0;
+  cursor: grab;
+  color: var(--text-muted);
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Dragging states */
+.category-manage-item {
+  position: relative;
+  will-change: transform;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.category-manage-item.dragging {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.18);
+  border-color: var(--accent);
+  z-index: 100;
+  opacity: 0.95;
+  transform-origin: center center;
+  scale: 1.02;
+}
+
+.drag-active .category-manage-item:not(.dragging) {
+  opacity: 0.7;
+}
+
 /* === Analytics === */
 .analytics-card {
   background: var(--bg-card);

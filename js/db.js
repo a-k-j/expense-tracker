@@ -101,6 +101,15 @@ async function deleteCategory(id) {
   return db.categories.delete(id);
 }
 
+async function reorderCategories(orderedIds) {
+  // orderedIds: array of category IDs in the desired new order
+  await db.transaction('rw', db.categories, async () => {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db.categories.update(orderedIds[i], { order: i });
+    }
+  });
+}
+
 // ── Expense helpers ────────────────────────────────────────────────────────────
 async function addExpense({ amount, categoryId, note = '', customName = '', date }) {
   const d = date ? new Date(date) : new Date();
@@ -192,7 +201,7 @@ export {
   db,
   seedIfEmpty,
   getSetting, setSetting,
-  getCategories, getCategoryById, addCategory, updateCategory, deleteCategory,
+  getCategories, getCategoryById, addCategory, updateCategory, deleteCategory, reorderCategories,
   addExpense, updateExpense, deleteExpense, getExpenseById,
   getExpensesByDateRange, getTodayExpenses, getMonthExpenses, getAllExpenses,
   sumByCategory, sumTotal, getDailyTotals,

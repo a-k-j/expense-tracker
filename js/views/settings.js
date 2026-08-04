@@ -1,7 +1,7 @@
 // js/views/settings.js — Categories manager, export, backup, budget
 
 import {
-  getCategories, addCategory, updateCategory, deleteCategory,
+  getCategories, addCategory, updateCategory, deleteCategory, reorderCategories,
   getAllExpenses, db,
   getSetting, setSetting,
 } from '../db.js';
@@ -227,10 +227,23 @@ function renderCategoryList(container, categories, page) {
     return;
   }
   container.innerHTML = '';
+
+  // Track current category order by ID for drag reorder
+  let catOrder = categories.map(c => c.id);
+
   for (const cat of categories) {
     const row = document.createElement('div');
     row.className = 'category-manage-item';
+    row.dataset.catId = cat.id;
     row.innerHTML = `
+      <div class="drag-handle" aria-label="Drag to reorder">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" opacity="0.4">
+          <circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/>
+          <circle cx="9" cy="10" r="1.5"/><circle cx="15" cy="10" r="1.5"/>
+          <circle cx="9" cy="15" r="1.5"/><circle cx="15" cy="15" r="1.5"/>
+          <circle cx="9" cy="20" r="1.5"/><circle cx="15" cy="20" r="1.5"/>
+        </svg>
+      </div>
       <div class="category-manage-item-icon" style="background:${hexAlpha(cat.color,0.18)}">${cat.emoji}</div>
       <div class="category-manage-item-name">${cat.name}</div>
       <div class="category-manage-item-actions">
@@ -251,6 +264,13 @@ function renderCategoryList(container, categories, page) {
     `;
     container.appendChild(row);
   }
+
+  // ── Long-press drag reorder ────────────────────────────────────────────────
+  initDragReorder(container, catOrder, async (newOrder) => {
+    await reorderCategories(newOrder);
+    const cats = await getCategories();
+    renderCategoryList(container, cats, page);
+  });
 
   // Edit
   container.querySelectorAll('.edit-cat-btn').forEach(btn => {
@@ -280,6 +300,206 @@ function renderCategoryList(container, categories, page) {
       }
     });
   });
+}
+
+// ── Drag reorder engine (touch long-press + mouse) ──────────────────────────
+function initDragReorder(container, catOrder, onReorder) {
+  const LONG_PRESS_MS = 400;
+  let dragState = null;
+
+  // Get all items as an array
+  const getItems = () => [...container.querySelectorAll('.category-manage-item')];
+
+  // --- Touch support ---
+  let longPressTimer = null;
+
+  container.addEventListener('touchstart', (e) => {
+    const item = e.target.closest('.category-manage-item');
+    if (!item || dragState) return;
+
+    const touch = e.touches[0];
+    longPressTimer = setTimeout(() => {
+      longPressTimer = null;
+      startDrag(item, touch.clientY);
+      // Vibrate feedback if available
+      if (navigator.vibrate) navigator.vibrate(30);
+    }, LONG_PRESS_MS);
+  }, { passive: true });
+
+  container.addEventListener('touchmove', (e) => {
+    if (longPressTimer) {
+      // Cancel long press if finger moves too much before activation
+      const touch = e.touches[0];
+      if (!dragState) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+        return;
+      }
+    }
+    if (!dragState) return;
+    e.preventDefault();
+    moveDrag(e.touches[0].clientY);
+  }, { passive: false });
+
+  container.addEventListener('touchend', () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+    if (dragState) endDrag();
+  }, { passive: true });
+
+  container.addEventListener('touchcancel', () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+    if (dragState) cancelDrag();
+  }, { passive: true });
+
+  // --- Mouse support (hold to drag) ---
+  let mouseTimer = null;
+
+  container.addEventListener('mousedown', (e) => {
+    const item = e.target.closest('.category-manage-item');
+    // Only initiate on drag handle or via long press
+    const isHandle = e.target.closest('.drag-handle');
+    if (!item) return;
+    // Prevent if clicking buttons
+    if (e.target.closest('.btn-icon')) return;
+
+    if (isHandle) {
+      // Immediate drag from handle
+      e.preventDefault();
+      startDrag(item, e.clientY);
+    } else {
+      // Long press for non-handle area
+      mouseTimer = setTimeout(() => {
+        mouseTimer = null;
+        startDrag(item, e.clientY);
+      }, LONG_PRESS_MS);
+    }
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (mouseTimer && !dragState) {
+      clearTimeout(mouseTimer);
+      mouseTimer = null;
+      return;
+    }
+    if (!dragState) return;
+    e.preventDefault();
+    moveDrag(e.clientY);
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (mouseTimer) {
+      clearTimeout(mouseTimer);
+      mouseTimer = null;
+    }
+    if (dragState) endDrag();
+  });
+
+  // --- Core drag logic ---
+  function startDrag(item, startY) {
+    const items = getItems();
+    const index = items.indexOf(item);
+    if (index < 0) return;
+
+    const rect = item.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
+    dragState = {
+      el: item,
+      index,
+      currentIndex: index,
+      startY,
+      offsetY: startY - rect.top,
+      itemHeight: rect.height + parseFloat(getComputedStyle(item).marginBottom || 0),
+      containerTop: containerRect.top,
+    };
+
+    item.classList.add('dragging');
+    container.classList.add('drag-active');
+
+    // Add placeholder styling to other items
+    items.forEach((it, i) => {
+      if (i !== index) {
+        it.style.transition = 'transform 200ms ease';
+      }
+    });
+  }
+
+  function moveDrag(clientY) {
+    if (!dragState) return;
+    const { el, index, itemHeight, containerTop, offsetY } = dragState;
+    const items = getItems();
+
+    // Position the dragged element
+    const relativeY = clientY - containerTop - offsetY;
+    el.style.transform = `translateY(${clientY - dragState.startY}px)`;
+    el.style.zIndex = '100';
+
+    // Determine new index based on cursor position
+    const rawIndex = Math.round((relativeY) / itemHeight);
+    const newIndex = Math.max(0, Math.min(items.length - 1, rawIndex));
+
+    if (newIndex !== dragState.currentIndex) {
+      dragState.currentIndex = newIndex;
+
+      // Shift other items visually
+      items.forEach((it, i) => {
+        if (it === el) return;
+        if (i >= Math.min(index, newIndex) && i <= Math.max(index, newIndex)) {
+          const shift = newIndex > index
+            ? (i <= newIndex && i > index ? -itemHeight : 0)
+            : (i >= newIndex && i < index ? itemHeight : 0);
+          it.style.transform = `translateY(${shift}px)`;
+        } else {
+          it.style.transform = 'translateY(0)';
+        }
+      });
+    }
+  }
+
+  function endDrag() {
+    if (!dragState) return;
+    const { el, index, currentIndex } = dragState;
+    const items = getItems();
+
+    // Clean up styles
+    el.classList.remove('dragging');
+    container.classList.remove('drag-active');
+    items.forEach(it => {
+      it.style.transform = '';
+      it.style.transition = '';
+      it.style.zIndex = '';
+    });
+
+    // Apply reorder if changed
+    if (index !== currentIndex) {
+      // Reorder catOrder array
+      const moved = catOrder.splice(index, 1)[0];
+      catOrder.splice(currentIndex, 0, moved);
+      onReorder([...catOrder]);
+    }
+
+    dragState = null;
+  }
+
+  function cancelDrag() {
+    if (!dragState) return;
+    const { el } = dragState;
+    const items = getItems();
+    el.classList.remove('dragging');
+    container.classList.remove('drag-active');
+    items.forEach(it => {
+      it.style.transform = '';
+      it.style.transition = '';
+      it.style.zIndex = '';
+    });
+    dragState = null;
+  }
 }
 
 // ── Category modal (add / edit) ───────────────────────────────────────────────
