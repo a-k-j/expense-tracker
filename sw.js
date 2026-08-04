@@ -1,6 +1,6 @@
 // sw.js — Service Worker: cache-first strategy for offline support
 
-const CACHE_NAME = 'spendsense-v11';
+const CACHE_NAME = 'spendsense-v12';
 const STATIC_URLS = [
   './',
   './index.html',
@@ -33,9 +33,11 @@ const STATIC_URLS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      // Cache what we can; don't fail install if CDN is unreachable
+      // Force network fetch to bypass browser HTTP cache on update
       const results = await Promise.allSettled(
-        STATIC_URLS.map(url => cache.add(url).catch(() => null))
+        STATIC_URLS.map(url =>
+          cache.add(new Request(url, { cache: 'reload' })).catch(() => null)
+        )
       );
       return results;
     })

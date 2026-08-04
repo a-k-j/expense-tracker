@@ -20,9 +20,11 @@ const VIEWS = {
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 async function boot() {
-  // Register service worker
+  // Register service worker & check for updates
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      reg.update();
+    }).catch(() => {});
   }
 
   // Seed default data
