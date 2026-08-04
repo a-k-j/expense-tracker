@@ -72,9 +72,9 @@ async function buildSettings(page) {
     <div class="settings-section">
       <div class="settings-section-title">Categories</div>
       <div id="cat-list"></div>
-      <button class="btn btn-secondary mt-sm w-full" id="add-cat-btn" style="gap:8px;justify-content:center;padding:14px">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add Category
+      <button class="btn btn-secondary mt-sm w-full" id="add-cat-btn" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;vertical-align:middle"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span style="line-height:1">Add Category</span>
       </button>
     </div>
 

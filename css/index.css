@@ -1088,6 +1088,8 @@ input, textarea, select {
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   transition: background var(--transition-fast);
+  width: 100%;
+  text-align: left;
 }
 
 .settings-item:last-child { border-bottom: none; }
