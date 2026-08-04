@@ -297,14 +297,7 @@ input, textarea, select {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-md) var(--space-md) var(--space-sm);
-  position: sticky;
-  top: 0;
-  background: rgba(15, 15, 26, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  z-index: 10;
-  border-bottom: 1px solid transparent;
+  padding: 8px 0 16px;
 }
 
 .page-title {

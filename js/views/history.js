@@ -22,8 +22,8 @@ export async function renderHistory(container) {
 
   page.innerHTML = `
     <!-- Header -->
-    <div class="page-header" style="position:relative;top:0;padding:12px 0 8px">
-      <h1 class="page-title">History</h1>
+    <div style="padding:8px 0 16px">
+      <h1 style="font-size:22px;font-weight:800;letter-spacing:-0.5px">History</h1>
     </div>
 
     <!-- Date Range -->
@@ -60,11 +60,9 @@ export async function renderHistory(container) {
   `;
 
   async function loadData() {
-    const start = new Date(document.getElementById('hist-start').value);
-    const end   = new Date(document.getElementById('hist-end').value);
-    if (isNaN(start) || isNaN(end) || start > end) return;
+    if (!startDate || !endDate || startDate > endDate) return;
 
-    let expenses = await getExpensesByDateRange(start, end);
+    let expenses = await getExpensesByDateRange(startDate, endDate);
 
     // Filter by category
     if (activeCatId !== null) {
