@@ -1,5 +1,7 @@
 // js/views/settings.js — Categories manager, export, backup, budget
 
+import { APP_VERSION } from '../config.js';
+
 import {
   getCategories, addCategory, updateCategory, deleteCategory, reorderCategories,
   getAllExpenses, db,
@@ -145,7 +147,7 @@ async function buildSettings(page) {
     </div>
 
     <div style="text-align:center;padding:16px;color:var(--text-muted);font-size:12px;">
-      SpendSense v1.0 · Data stored locally
+      SpendSense v${APP_VERSION} · Data stored locally
     </div>
   `;
 

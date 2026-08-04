@@ -7,6 +7,7 @@ const STATIC_URLS = [
   './manifest.json',
   './css/index.css',
   './js/app.js',
+  './js/config.js',
   './js/db.js',
   './js/utils/date-utils.js',
   './js/utils/csv-export.js',

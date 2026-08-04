@@ -10,13 +10,16 @@ const DAY_LABELS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
 // ── Singleton cleanup ────────────────────────────────────────────────────────
 let activeDropdown = null;
+let activeTrigger = null;
 let outsideClickHandler = null;
 
 function closeActiveDropdown() {
   if (activeDropdown) {
     activeDropdown.classList.remove('open');
-    setTimeout(() => activeDropdown?.remove(), 200);
+    const ref = activeDropdown;
+    setTimeout(() => ref?.remove(), 200);
     activeDropdown = null;
+    activeTrigger = null;
   }
   if (outsideClickHandler) {
     document.removeEventListener('pointerdown', outsideClickHandler, true);
@@ -70,7 +73,7 @@ export function createDatePicker(opts) {
     e.stopPropagation();
 
     // If this trigger's dropdown is already open, close it
-    if (activeDropdown && activeDropdown.parentElement === wrapper) {
+    if (activeDropdown && activeTrigger === trigger) {
       closeActiveDropdown();
       return;
     }
@@ -79,7 +82,8 @@ export function createDatePicker(opts) {
     closeActiveDropdown();
 
     const dropdown = buildDropdown();
-    wrapper.appendChild(dropdown);
+    // Append to document.body so it escapes all overflow:hidden / stacking contexts
+    document.body.appendChild(dropdown);
 
     // Position the dropdown using fixed positioning relative to the trigger
     const rect = trigger.getBoundingClientRect();
@@ -104,6 +108,7 @@ export function createDatePicker(opts) {
     requestAnimationFrame(() => dropdown.classList.add('open'));
 
     activeDropdown = dropdown;
+    activeTrigger = trigger;
 
     // Close on outside click (deferred to avoid catching this click)
     setTimeout(() => {

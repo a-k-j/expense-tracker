@@ -1355,7 +1355,6 @@ input, textarea, select {
   display: inline-flex;
   flex: 1;
   min-width: 0;
-  z-index: 500;
 }
 
 .date-picker-trigger {

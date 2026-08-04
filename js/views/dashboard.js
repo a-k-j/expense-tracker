@@ -1,5 +1,7 @@
 // js/views/dashboard.js — Main dashboard view
 
+import { APP_VERSION } from '../config.js';
+
 import {
   getTodayExpenses, getMonthExpenses, getCategories, sumByCategory, sumTotal,
   getSetting, setSetting,
@@ -42,7 +44,7 @@ export async function renderDashboard(container) {
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 16px">
       <div>
         <div style="font-size:13px;color:var(--text-muted);font-weight:500">${new Date().toLocaleDateString('en-IN',{weekday:'long'})}</div>
-        <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px">SpendSense</div>
+        <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px">SpendSense <span style="font-size:11px;font-weight:500;color:var(--text-muted);letter-spacing:0">v${APP_VERSION}</span></div>
       </div>
       <div style="font-size:28px">👋</div>
     </div>
