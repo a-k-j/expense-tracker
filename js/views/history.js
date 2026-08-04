@@ -3,6 +3,7 @@
 import { getCategories, getExpensesByDateRange, sumTotal } from '../db.js';
 import { formatAmount, toDateStr, getMonthStart, getMonthEnd, monthLabel } from '../utils/date-utils.js';
 import { renderExpenseList } from '../components/expense-list.js';
+import { createDatePicker } from '../components/date-picker.js';
 
 export async function renderHistory(container) {
   container.innerHTML = `<div class="page" id="history-page"></div>`;
@@ -27,9 +28,9 @@ export async function renderHistory(container) {
 
     <!-- Date Range -->
     <div class="date-range-row mb-md">
-      <input type="date" id="hist-start" class="form-input" value="${startDate}" max="${toDateStr(new Date())}" aria-label="Start date" />
-      <span style="color:var(--text-muted);align-self:center;flex-shrink:0;font-weight:600">→</span>
-      <input type="date" id="hist-end"   class="form-input" value="${endDate}"   max="${toDateStr(new Date())}" aria-label="End date" />
+      <div id="hist-start-picker"></div>
+      <span style="color:var(--text-muted);align-self:center;flex-shrink:0;font-weight:600;display:flex;align-items:center;padding:0 4px">→</span>
+      <div id="hist-end-picker"></div>
     </div>
 
     <!-- Category filter chips -->
@@ -77,15 +78,24 @@ export async function renderHistory(container) {
     renderExpenseList(document.getElementById('hist-list'), expenses, catMap, loadData);
   }
 
-  // Date range listeners
-  document.getElementById('hist-start').addEventListener('change', (e) => {
-    startDate = e.target.value;
-    loadData();
+  // Mount custom date pickers
+  const startPickerEl = createDatePicker({
+    value: startDate,
+    max: toDateStr(new Date()),
+    id: 'hist-start',
+    ariaLabel: 'Start date',
+    onChange: (val) => { startDate = val; loadData(); },
   });
-  document.getElementById('hist-end').addEventListener('change', (e) => {
-    endDate = e.target.value;
-    loadData();
+  document.getElementById('hist-start-picker').appendChild(startPickerEl);
+
+  const endPickerEl = createDatePicker({
+    value: endDate,
+    max: toDateStr(new Date()),
+    id: 'hist-end',
+    ariaLabel: 'End date',
+    onChange: (val) => { endDate = val; loadData(); },
   });
+  document.getElementById('hist-end-picker').appendChild(endPickerEl);
 
   // Category chip listeners
   document.getElementById('cat-chips').addEventListener('click', (e) => {

@@ -4,6 +4,7 @@ import { getCategories, addExpense, updateExpense, deleteExpense } from '../db.j
 import { getTodayStr, formatAmount, getSmartDefaultDate, saveLastUsedDate } from '../utils/date-utils.js';
 import { showToast } from './toast.js';
 import { renderCategoryGrid } from './category-grid.js';
+import { createDatePicker } from './date-picker.js';
 
 let sheetEl   = null;
 let overlayEl = null;
@@ -103,15 +104,8 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
 
     <!-- Date -->
     <div class="form-field">
-      <label class="form-label" for="expense-date">Date</label>
-      <input
-        type="date"
-        id="expense-date"
-        class="form-input"
-        value="${defaultDate}"
-        max="${getTodayStr()}"
-        aria-label="Expense date"
-      />
+      <label class="form-label">Date</label>
+      <div id="expense-date-picker"></div>
     </div>
 
     <!-- Actions -->
@@ -157,9 +151,20 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
   // Focus amount
   setTimeout(() => document.getElementById('expense-amount')?.focus(), 400);
 
+  // Mount date picker
+  let selectedDate = defaultDate;
+  const datePicker = createDatePicker({
+    value: selectedDate,
+    max: getTodayStr(),
+    id: 'expense-date',
+    ariaLabel: 'Expense date',
+    onChange: (val) => { selectedDate = val; },
+  });
+  document.getElementById('expense-date-picker').appendChild(datePicker);
+
   // Save
   document.getElementById('expense-save').addEventListener('click', async () => {
-    await handleSave({ isEdit, expense, selectedCategoryGetter: () => selectedCategory, catMap });
+    await handleSave({ isEdit, expense, selectedCategoryGetter: () => selectedCategory, dateGetter: () => selectedDate, catMap });
   });
 
   // Delete (edit mode)
@@ -177,11 +182,11 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
   addSwipeDownClose(sheetEl);
 }
 
-async function handleSave({ isEdit, expense, selectedCategoryGetter, catMap }) {
+async function handleSave({ isEdit, expense, selectedCategoryGetter, dateGetter, catMap }) {
   const amountVal  = parseFloat(document.getElementById('expense-amount').value);
   const note       = document.getElementById('expense-note').value.trim();
   const customName = document.getElementById('expense-custom-name')?.value.trim() || '';
-  const date       = document.getElementById('expense-date').value;
+  const date       = dateGetter();
   const categoryId = selectedCategoryGetter();
   const selectedCat = catMap[categoryId];
 

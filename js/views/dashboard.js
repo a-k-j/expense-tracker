@@ -4,12 +4,13 @@ import {
   getTodayExpenses, getMonthExpenses, getCategories, sumByCategory, sumTotal,
   getSetting, setSetting,
 } from '../db.js';
-import { formatAmount, formatAmountShort, monthLabel, getMonthStart, getMonthEnd, getTodayStr } from '../utils/date-utils.js';
+import { formatAmount, formatAmountShort, monthLabel, getMonthStart, getMonthEnd, getTodayStr, getSmartDefaultDate } from '../utils/date-utils.js';
 import { renderExpenseList } from '../components/expense-list.js';
 import { renderBarChart }    from '../components/chart.js';
 import { renderCategoryGrid } from '../components/category-grid.js';
 import { openAddExpense }    from '../components/expense-form.js';
 import { showToast }         from '../components/toast.js';
+import { createDatePicker }  from '../components/date-picker.js';
 
 export async function renderDashboard(container) {
   container.innerHTML = `<div class="page" id="dashboard-page"><div class="spinner"></div></div>`;
@@ -112,16 +113,8 @@ export async function renderDashboard(container) {
         />
       </div>
       <div class="form-field mb-md" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <label class="form-label" for="quick-date" style="margin-bottom:0;font-size:13px;white-space:nowrap;color:var(--text-muted);">Date</label>
-        <input
-          type="date"
-          id="quick-date"
-          class="form-input"
-          style="padding:6px 12px;font-size:13px;max-width:180px;text-align:right;"
-          value="${getTodayStr()}"
-          max="${getTodayStr()}"
-          aria-label="Quick-add date"
-        />
+        <label class="form-label" style="margin-bottom:0;font-size:13px;white-space:nowrap;color:var(--text-muted);">Date</label>
+        <div id="quick-date-picker" style="max-width:180px"></div>
       </div>
       <button class="btn btn-primary" id="quick-add-btn" aria-label="Save expense">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -176,6 +169,17 @@ export async function renderDashboard(container) {
   );
   updateQuickCustomNameVisibility(selectedQuickCat);
 
+  // Mount quick-add date picker
+  let quickDateValue = getSmartDefaultDate();
+  const quickDatePicker = createDatePicker({
+    value: quickDateValue,
+    max: getTodayStr(),
+    id: 'quick-date',
+    ariaLabel: 'Quick-add date',
+    onChange: (val) => { quickDateValue = val; },
+  });
+  document.getElementById('quick-date-picker').appendChild(quickDatePicker);
+
   // Quick-add handler
   document.getElementById('quick-add-btn').addEventListener('click', async () => {
     const amountInput = document.getElementById('quick-amount');
@@ -196,7 +200,7 @@ export async function renderDashboard(container) {
       document.getElementById('quick-custom-name')?.focus();
       return;
     }
-    const date = document.getElementById('quick-date')?.value || getTodayStr();
+    const date = quickDateValue;
 
     const btn = document.getElementById('quick-add-btn');
     btn.disabled = true;

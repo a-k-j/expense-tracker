@@ -10,6 +10,7 @@ import { toDateStr, getMonthStart, getMonthEnd, formatAmount } from '../utils/da
 import { exportCSV, csvFilename } from '../utils/csv-export.js';
 import { exportJSON, importJSON } from '../utils/json-backup.js';
 import { showToast } from '../components/toast.js';
+import { createDatePicker } from '../components/date-picker.js';
 
 const EMOJI_OPTIONS = ['🍔','☕','🚗','⛽','🛒','💊','🎬','📦','🍕','🍜','🥗','🍣','🎮','📚','✈️','🏋️','💇','🐶','🎁','💸','🏠','💡','🔧','👗','💰','🎵','🎨','🏃','🚿','📱'];
 const COLOR_OPTIONS = [
@@ -89,11 +90,9 @@ async function buildSettings(page) {
           </div>
         </div>
         <div class="settings-item" style="cursor:default;flex-wrap:wrap;gap:8px;align-items:center">
-          <input type="date" id="export-start" class="form-input" style="flex:1;min-width:120px"
-                 value="${toDateStr(getMonthStart())}" aria-label="Export start date" />
+          <div id="export-start-picker"></div>
           <span style="color:var(--text-muted);font-weight:700;display:flex;align-items:center;flex-shrink:0;padding:0 4px">→</span>
-          <input type="date" id="export-end" class="form-input" style="flex:1;min-width:120px"
-                 value="${toDateStr(getMonthEnd())}" max="${toDateStr(new Date())}" aria-label="Export end date" />
+          <div id="export-end-picker"></div>
         </div>
         <button class="settings-item" id="export-csv-btn">
           <div class="settings-item-icon" style="background:rgba(16,185,129,0.15)">📊</div>
@@ -152,6 +151,27 @@ async function buildSettings(page) {
 
   renderCategoryList(document.getElementById('cat-list'), categories, page);
 
+  // Mount custom date pickers for export
+  let exportStartDate = toDateStr(getMonthStart());
+  let exportEndDate = toDateStr(getMonthEnd());
+
+  const startPicker = createDatePicker({
+    value: exportStartDate,
+    id: 'export-start',
+    ariaLabel: 'Export start date',
+    onChange: (val) => { exportStartDate = val; },
+  });
+  document.getElementById('export-start-picker').appendChild(startPicker);
+
+  const endPicker = createDatePicker({
+    value: exportEndDate,
+    max: toDateStr(new Date()),
+    id: 'export-end',
+    ariaLabel: 'Export end date',
+    onChange: (val) => { exportEndDate = val; },
+  });
+  document.getElementById('export-end-picker').appendChild(endPicker);
+
   // Budget save
   document.getElementById('save-budget-btn').addEventListener('click', async () => {
     const val = parseFloat(document.getElementById('budget-input').value) || 0;
@@ -170,8 +190,8 @@ async function buildSettings(page) {
 
   // CSV export
   document.getElementById('export-csv-btn').addEventListener('click', async () => {
-    const start = new Date(document.getElementById('export-start').value);
-    const end   = new Date(document.getElementById('export-end').value);
+    const start = new Date(exportStartDate);
+    const end   = new Date(exportEndDate);
     if (isNaN(start) || isNaN(end)) { showToast('Select valid dates', 'warning'); return; }
     try {
       const expenses   = await getExpensesByDateRange(start, end);
