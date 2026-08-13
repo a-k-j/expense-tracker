@@ -31,12 +31,18 @@ export async function renderDashboard(container) {
   const monthTotal = await sumTotal(monthExpenses);
   const monthCatSum = await sumByCategory(monthExpenses);
 
-  // Check budget alerts
+  // Compute analytics-included totals (excludes expenses marked excludeFromAnalytics)
+  const includedMonthExpenses = monthExpenses.filter(e => !e.excludeFromAnalytics);
+  const includedMonthTotal = await sumTotal(includedMonthExpenses);
+  const includedTodayTotal = await sumTotal(todayExpenses.filter(e => !e.excludeFromAnalytics));
+  const hasExcluded = includedMonthTotal !== monthTotal;
+
+  // Check budget alerts (uses full total — real spending)
   if (budget > 0) {
     await checkBudgetAlerts(monthTotal, budget, alertsSeen);
   }
 
-  const budgetPct   = budget > 0 ? Math.min((monthTotal / budget) * 100, 100) : 0;
+  const budgetPct   = budget > 0 ? Math.min((includedMonthTotal / budget) * 100, 100) : 0;
   const warnClass   = budgetPct >= 100 ? 'warn-100' : budgetPct >= 90 ? 'warn-90' : budgetPct >= 75 ? 'warn-75' : budgetPct >= 50 ? 'warn-50' : '';
 
   page.innerHTML = `
@@ -53,12 +59,16 @@ export async function renderDashboard(container) {
     <div class="balance-card mb-md">
       <div class="balance-label">This Month · ${monthLabel()}</div>
       <div class="balance-amount">
-        <span class="currency">₹</span>${monthTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+        <span class="currency">₹</span>${includedMonthTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
       </div>
+      ${hasExcluded ? `
+      <div class="balance-actual-spend">
+        Actual Spend: <span class="actual-val">${formatAmount(monthTotal)}</span>
+      </div>` : ''}
       <div class="balance-meta">
         <div class="balance-meta-item">
           <span class="label">Today</span>
-          <span class="value">${formatAmountShort(todayTotal)}</span>
+          <span class="value">${formatAmountShort(includedTodayTotal)}</span>
         </div>
         <div class="balance-meta-item">
           <span class="label">Entries</span>
@@ -67,7 +77,7 @@ export async function renderDashboard(container) {
         ${budget > 0 ? `
         <div class="balance-meta-item">
           <span class="label">Budget left</span>
-          <span class="value" style="color:${budgetPct>=90?'#fca5a5':budgetPct>=75?'#fcd34d':'white'}">${formatAmountShort(Math.max(0, budget - monthTotal))}</span>
+          <span class="value" style="color:${budgetPct>=90?'#fca5a5':budgetPct>=75?'#fcd34d':'white'}">${formatAmountShort(Math.max(0, budget - includedMonthTotal))}</span>
         </div>` : ''}
       </div>
       ${budget > 0 ? `
@@ -103,7 +113,7 @@ export async function renderDashboard(container) {
         />
       </div>
       <div id="quick-cat-grid" class="category-grid mb-md"></div>
-      <div class="form-field mb-md" id="quick-custom-name-wrapper" style="display:none">
+      <div class="form-field mb-md" id="quick-custom-name-wrapper" style="display:none;margin-top:12px">
         <input
           type="text"
           id="quick-custom-name"
@@ -117,6 +127,19 @@ export async function renderDashboard(container) {
       <div class="form-field mb-md" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <label class="form-label" style="margin-bottom:0;font-size:13px;white-space:nowrap;color:var(--text-muted);">Date</label>
         <div id="quick-date-picker" style="max-width:180px"></div>
+      </div>
+      <div class="form-field mb-md">
+        <div class="toggle-row">
+          <div class="toggle-row-info">
+            <div class="toggle-row-label">Exclude from Analytics</div>
+            <div class="toggle-row-sub">Won't count in trends & reports</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="quick-exclude-analytics" />
+            <span class="toggle-track"></span>
+            <span class="toggle-knob"></span>
+          </label>
+        </div>
       </div>
       <button class="btn btn-primary" id="quick-add-btn" aria-label="Save expense">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -207,8 +230,9 @@ export async function renderDashboard(container) {
     const btn = document.getElementById('quick-add-btn');
     btn.disabled = true;
     try {
+      const excludeFromAnalytics = document.getElementById('quick-exclude-analytics')?.checked || false;
       const { addExpense } = await import('../db.js');
-      await addExpense({ amount, categoryId: selectedQuickCat, customName, date });
+      await addExpense({ amount, categoryId: selectedQuickCat, customName, date, excludeFromAnalytics });
       showToast(`${formatAmount(amount)} added ✓`, 'success');
       amountInput.value = '';
       const quickNameInput = document.getElementById('quick-custom-name');

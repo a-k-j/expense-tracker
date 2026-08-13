@@ -1,7 +1,7 @@
 // js/views/analytics.js — Week-over-week comparison + daily trend line
 
 import {
-  getCategories, getExpensesByDateRange, getDailyTotals,
+  getCategories, getExpensesByDateRangeForAnalytics, getDailyTotalsForAnalytics,
   sumByCategory, sumTotal,
 } from '../db.js';
 import {
@@ -26,20 +26,20 @@ export async function renderAnalytics(container) {
   const monthEnd   = getMonthEnd();
 
   const [thisWeekExp, prevWeekExp, monthExp] = await Promise.all([
-    getExpensesByDateRange(thisWeek.start, thisWeek.end),
-    getExpensesByDateRange(prevWeek.start, prevWeek.end),
-    getExpensesByDateRange(monthStart, monthEnd),
+    getExpensesByDateRangeForAnalytics(thisWeek.start, thisWeek.end),
+    getExpensesByDateRangeForAnalytics(prevWeek.start, prevWeek.end),
+    getExpensesByDateRangeForAnalytics(monthStart, monthEnd),
   ]);
 
   const thisWeekTotal = await sumTotal(thisWeekExp);
   const prevWeekTotal = await sumTotal(prevWeekExp);
   const monthCatSum   = await sumByCategory(monthExp);
 
-  // Daily totals for trend line (last 30 days)
+  // Daily totals for trend line (last 30 days) — analytics-filtered
   const trendEnd   = new Date();
   const trendStart = new Date();
   trendStart.setDate(trendStart.getDate() - 29);
-  const dailyMap = await getDailyTotals(trendStart, trendEnd);
+  const dailyMap = await getDailyTotalsForAnalytics(trendStart, trendEnd);
   const trendDates  = dateRange(trendStart, trendEnd);
   const trendValues = trendDates.map(d => dailyMap[d] || 0);
 
@@ -53,6 +53,15 @@ export async function renderAnalytics(container) {
 
   // Max for week bars
   const weekMax  = Math.max(thisWeekTotal, prevWeekTotal) || 1;
+
+  // Trend stats (handle all-zero edge case)
+  const maxTrendValue = Math.max(...trendValues);
+  const highestDayStat = maxTrendValue > 0
+    ? trendStat('Highest Day', maxTrendValue, trendDates[trendValues.indexOf(maxTrendValue)])
+    : trendStat('Highest Day', 0, null);
+  const monthTotal = await sumTotal(monthExp);
+  const daysElapsedInMonth = new Date().getDate(); // 1 to 31
+  const avgPerDay = daysElapsedInMonth > 0 ? (monthTotal / daysElapsedInMonth) : 0;
 
   page.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 16px">
@@ -94,9 +103,9 @@ export async function renderAnalytics(container) {
 
       <div class="divider"></div>
       <div style="display:flex;gap:16px;justify-content:space-between">
-        ${trendStat('Highest Day', Math.max(...trendValues), trendDates[trendValues.indexOf(Math.max(...trendValues))])}
-        ${trendStat('Avg / Day', trendValues.reduce((s,v)=>s+v,0)/trendDates.length, null)}
-        ${trendStat('This Month', await sumTotal(monthExp), null)}
+        ${highestDayStat}
+        ${trendStat('Avg / Day', avgPerDay, null)}
+        ${trendStat('This Month', monthTotal, null)}
       </div>
     </div>
 
@@ -115,7 +124,7 @@ export async function renderAnalytics(container) {
     if (prevBar) prevBar.style.width = ((prevWeekTotal / weekMax) * 100) + '%';
   }));
 
-  // Day-by-day this week
+  // Day-by-day this week (also analytics-filtered)
   await renderWeekDays(document.getElementById('this-week-days'), thisWeek);
 
   // Trend line
@@ -132,7 +141,7 @@ export async function renderAnalytics(container) {
 
 async function renderWeekDays(container, weekRange) {
   const days    = dateRange(weekRange.start, weekRange.end);
-  const dailyMap = await getDailyTotals(weekRange.start, weekRange.end);
+  const dailyMap = await getDailyTotalsForAnalytics(weekRange.start, weekRange.end);
   const dayMax  = Math.max(...days.map(d => dailyMap[d] || 0)) || 1;
 
   container.innerHTML = days.map(d => {
@@ -161,7 +170,7 @@ function trendStat(label, value, dateStr) {
   return `
     <div style="flex:1;text-align:center;">
       <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:4px">${label}</div>
-      <div style="font-size:16px;font-weight:800;letter-spacing:-0.3px">${formatAmountShort(value)}</div>
+      <div style="font-size:16px;font-weight:800;letter-spacing:-0.3px">${value > 0 ? formatAmountShort(value) : '—'}</div>
       ${displayDate ? `<div style="font-size:10px;color:var(--text-muted)">${displayDate}</div>` : ''}
     </div>`;
 }

@@ -111,7 +111,7 @@ async function reorderCategories(orderedIds) {
 }
 
 // ── Expense helpers ────────────────────────────────────────────────────────────
-async function addExpense({ amount, categoryId, note = '', customName = '', date }) {
+async function addExpense({ amount, categoryId, note = '', customName = '', date, excludeFromAnalytics = false }) {
   const d = date ? new Date(date) : new Date();
   // Normalise to start-of-day string for day-level grouping
   const dateStr = toDateStr(d);
@@ -121,6 +121,7 @@ async function addExpense({ amount, categoryId, note = '', customName = '', date
     note,
     customName: (customName || '').trim(),
     date: dateStr,
+    excludeFromAnalytics: !!excludeFromAnalytics,
     createdAt: new Date().toISOString(),
   });
 }
@@ -188,6 +189,27 @@ async function getDailyTotals(startDate, endDate) {
   return map; // { 'YYYY-MM-DD': total }
 }
 
+// ── Analytics-filtered helpers (exclude expenses marked excludeFromAnalytics) ─
+async function getExpensesByDateRangeForAnalytics(startDate, endDate) {
+  const all = await getExpensesByDateRange(startDate, endDate);
+  return all.filter(e => !e.excludeFromAnalytics);
+}
+
+async function getDailyTotalsForAnalytics(startDate, endDate) {
+  const expenses = await getExpensesByDateRangeForAnalytics(startDate, endDate);
+  const map = {};
+  for (const e of expenses) {
+    map[e.date] = (map[e.date] || 0) + e.amount;
+  }
+  return map;
+}
+
+async function getMonthExpensesForAnalytics(year, month) {
+  const start = new Date(year, month, 1);
+  const end   = new Date(year, month + 1, 0);
+  return getExpensesByDateRangeForAnalytics(start, end);
+}
+
 // ── Date utility (minimal, used here for normalisation) ──────────────────────
 function toDateStr(d) {
   const dd = d instanceof Date ? d : new Date(d);
@@ -204,6 +226,7 @@ export {
   getCategories, getCategoryById, addCategory, updateCategory, deleteCategory, reorderCategories,
   addExpense, updateExpense, deleteExpense, getExpenseById,
   getExpensesByDateRange, getTodayExpenses, getMonthExpenses, getAllExpenses,
+  getExpensesByDateRangeForAnalytics, getDailyTotalsForAnalytics, getMonthExpensesForAnalytics,
   sumByCategory, sumTotal, getDailyTotals,
   toDateStr,
 };

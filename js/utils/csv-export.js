@@ -10,7 +10,7 @@ import { formatAmount } from './date-utils.js';
  */
 export function exportCSV(expenses, categoryMap, filename = 'expenses.csv') {
   const rows = [
-    ['Date', 'Time', 'Amount (INR)', 'Category', 'Expense Name', 'Note'],
+    ['Date', 'Time', 'Amount (INR)', 'Category', 'Expense Name', 'Note', 'Excluded from Analytics'],
   ];
 
   for (const e of expenses) {
@@ -27,6 +27,7 @@ export function exportCSV(expenses, categoryMap, filename = 'expenses.csv') {
       `"${catName.replace(/"/g, '""')}"`,
       `"${customName.replace(/"/g, '""')}"`,
       `"${(e.note || '').replace(/"/g, '""')}"`,
+      e.excludeFromAnalytics ? 'Yes' : 'No',
     ]);
   }
 

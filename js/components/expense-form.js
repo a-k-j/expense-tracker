@@ -73,7 +73,7 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
     </div>
 
     <!-- Expense Name (shown when category is Other) -->
-    <div class="form-field" id="expense-custom-name-wrapper" style="display:none">
+    <div class="form-field" id="expense-custom-name-wrapper" style="display:none;margin-top:12px">
       <label class="form-label" for="expense-custom-name">Expense Name / Title <span style="color:var(--danger)">*</span></label>
       <input
         type="text"
@@ -100,6 +100,21 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
         autocomplete="off"
         aria-label="Expense note"
       />
+    </div>
+
+    <!-- Exclude from Analytics -->
+    <div class="form-field">
+      <div class="toggle-row">
+        <div class="toggle-row-info">
+          <div class="toggle-row-label">Exclude from Analytics</div>
+          <div class="toggle-row-sub">Won't count in trends & reports</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="expense-exclude-analytics" ${expense?.excludeFromAnalytics ? 'checked' : ''} />
+          <span class="toggle-track"></span>
+          <span class="toggle-knob"></span>
+        </label>
+      </div>
     </div>
 
     <!-- Date -->
@@ -186,6 +201,7 @@ async function handleSave({ isEdit, expense, selectedCategoryGetter, dateGetter,
   const amountVal  = parseFloat(document.getElementById('expense-amount').value);
   const note       = document.getElementById('expense-note').value.trim();
   const customName = document.getElementById('expense-custom-name')?.value.trim() || '';
+  const excludeFromAnalytics = document.getElementById('expense-exclude-analytics')?.checked || false;
   const date       = dateGetter();
   const categoryId = selectedCategoryGetter();
   const selectedCat = catMap[categoryId];
@@ -212,10 +228,10 @@ async function handleSave({ isEdit, expense, selectedCategoryGetter, dateGetter,
 
   try {
     if (isEdit) {
-      await updateExpense(expense.id, { amount: amountVal, categoryId, note, customName, date });
+      await updateExpense(expense.id, { amount: amountVal, categoryId, note, customName, date, excludeFromAnalytics });
       showToast('Expense updated ✓', 'success');
     } else {
-      await addExpense({ amount: amountVal, categoryId, note, customName, date });
+      await addExpense({ amount: amountVal, categoryId, note, customName, date, excludeFromAnalytics });
       showToast(`${formatAmount(amountVal)} added ✓`, 'success');
     }
     // Remember the date for 30 minutes

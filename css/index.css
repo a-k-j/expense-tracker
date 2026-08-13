@@ -1296,6 +1296,114 @@ input, textarea, select {
   margin: var(--space-md) 0;
 }
 
+/* === Toggle Switch (iOS-style) === */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+}
+
+.toggle-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.toggle-row-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.toggle-row-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-glass-strong);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.toggle-switch input:checked + .toggle-track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  transition: transform var(--transition-fast);
+  pointer-events: none;
+}
+
+.toggle-switch input:checked ~ .toggle-knob {
+  transform: translateX(18px);
+}
+
+/* === Excluded Badge === */
+.expense-excluded-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 1px 6px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-left: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* === Balance Card — Actual Spend === */
+.balance-actual-spend {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: -6px;
+  margin-bottom: var(--space-md);
+  position: relative;
+  z-index: 1;
+  letter-spacing: 0.01em;
+}
+
+.balance-actual-spend .actual-val {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 700;
+}
+
+
 /* === Utilities === */
 .text-success { color: var(--success); }
 .text-danger { color: var(--danger); }

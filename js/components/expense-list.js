@@ -79,11 +79,14 @@ function buildExpenseItem(expense, cat, categoryMap, onChanged) {
     ? (cat.name.toLowerCase().startsWith('other') ? `Other — ${escapeHtml(expense.customName)}` : `${escapeHtml(cat.name)} — ${escapeHtml(expense.customName)}`)
     : escapeHtml(cat.name);
 
+  const excludedBadge = expense.excludeFromAnalytics
+    ? '<span class="expense-excluded-badge">Excluded</span>' : '';
+
   const bgColor = hexAlpha(cat.color, 0.18);
   item.innerHTML = `
     <div class="expense-item-icon" style="background:${bgColor}">${cat.emoji}</div>
     <div class="expense-item-info">
-      <div class="expense-item-category">${displayName}</div>
+      <div class="expense-item-category">${displayName}${excludedBadge}</div>
       ${expense.note ? `<div class="expense-item-note">${escapeHtml(expense.note)}</div>` : `<div class="expense-item-time">${formatTime(expense.createdAt)}</div>`}
       ${expense.note ? `<div class="expense-item-time">${formatTime(expense.createdAt)}</div>` : ''}
     </div>
