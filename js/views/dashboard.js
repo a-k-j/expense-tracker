@@ -112,8 +112,8 @@ export async function renderDashboard(container) {
           style="font-size:28px"
         />
       </div>
-      <div id="quick-cat-grid" class="category-grid mb-md"></div>
-      <div class="form-field mb-md" id="quick-custom-name-wrapper" style="display:none;margin-top:12px">
+      <div id="quick-cat-grid" class="category-grid" style="margin-bottom:24px"></div>
+      <div class="form-field" id="quick-custom-name-wrapper" style="display:none;margin-top:16px;margin-bottom:24px">
         <input
           type="text"
           id="quick-custom-name"
@@ -124,7 +124,7 @@ export async function renderDashboard(container) {
           aria-label="Expense custom name"
         />
       </div>
-      <div class="form-field mb-md" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div class="form-field" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;margin-bottom:20px;">
         <label class="form-label" style="margin-bottom:0;font-size:13px;white-space:nowrap;color:var(--text-muted);">Date</label>
         <div id="quick-date-picker" style="max-width:180px"></div>
       </div>

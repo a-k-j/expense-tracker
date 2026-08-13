@@ -67,13 +67,13 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
     </div>
 
     <!-- Category -->
-    <div class="form-field">
+    <div class="form-field" style="margin-bottom:24px">
       <label class="form-label">Category</label>
       <div id="sheet-cat-grid" class="category-grid"></div>
     </div>
 
     <!-- Expense Name (shown when category is Other) -->
-    <div class="form-field" id="expense-custom-name-wrapper" style="display:none;margin-top:12px">
+    <div class="form-field" id="expense-custom-name-wrapper" style="display:none;margin-top:16px;margin-bottom:24px">
       <label class="form-label" for="expense-custom-name">Expense Name / Title <span style="color:var(--danger)">*</span></label>
       <input
         type="text"
