@@ -36,7 +36,7 @@ export function renderExpenseList(container, expenses, categoryMap, onChanged) {
 
   for (const date of sortedDates) {
     const dayExpenses = groups[date];
-    const dayTotal    = dayExpenses.reduce((s, e) => s + e.amount, 0);
+    const dayTotal = dayExpenses.reduce((s, e) => s + e.amount, 0);
 
     const groupEl = document.createElement('div');
     groupEl.className = 'expense-group';
@@ -48,7 +48,7 @@ export function renderExpenseList(container, expenses, categoryMap, onChanged) {
     `;
 
     for (const expense of dayExpenses) {
-      const cat  = categoryMap[expense.categoryId] || { emoji: '📦', name: 'Unknown', color: 'hsl(220,15%,52%)' };
+      const cat = categoryMap[expense.categoryId] || { emoji: '📦', name: 'Unknown', color: 'hsl(220,15%,52%)' };
       const item = buildExpenseItem(expense, cat, categoryMap, onChanged);
       groupEl.appendChild(item);
     }
@@ -76,7 +76,7 @@ function buildExpenseItem(expense, cat, categoryMap, onChanged) {
   item.setAttribute('aria-label', `${cat.name}: ${formatAmount(expense.amount)}`);
 
   const displayName = expense.customName
-    ? (cat.name.toLowerCase().startsWith('other') ? `Other — ${escapeHtml(expense.customName)}` : `${escapeHtml(cat.name)} — ${escapeHtml(expense.customName)}`)
+    ? (cat.name.toLowerCase().startsWith('other') ? `Other - ${escapeHtml(expense.customName)}` : `${escapeHtml(cat.name)} — ${escapeHtml(expense.customName)}`)
     : escapeHtml(cat.name);
 
   const excludedBadge = expense.excludeFromAnalytics
@@ -112,7 +112,7 @@ function buildExpenseItem(expense, cat, categoryMap, onChanged) {
 
 function addSwipeToDelete(wrapper, item, deleteBg, expense, onChanged) {
   let startX = 0;
-  let curX   = 0;
+  let curX = 0;
   let active = false;
   const THRESHOLD = 80;
 
@@ -139,15 +139,22 @@ function addSwipeToDelete(wrapper, item, deleteBg, expense, onChanged) {
     item.style.transition = '';
 
     if (curX < -THRESHOLD) {
-      // Confirm delete
-      item.style.transform = `translateX(-100%)`;
-      item.style.opacity   = '0';
-      setTimeout(async () => {
-        await deleteExpense(expense.id);
-        wrapper.remove();
-        showToast('Expense deleted', 'success');
-        onChanged?.();
-      }, 250);
+      // Hold at swiped position and ask for confirmation
+      item.style.transform = `translateX(-${THRESHOLD}px)`;
+      const confirmed = confirm('Delete this expense?');
+      if (confirmed) {
+        item.style.transform = `translateX(-100%)`;
+        item.style.opacity = '0';
+        setTimeout(async () => {
+          await deleteExpense(expense.id);
+          wrapper.remove();
+          showToast('Expense deleted', 'success');
+          onChanged?.();
+        }, 250);
+      } else {
+        item.style.transform = '';
+        deleteBg.style.opacity = '0';
+      }
     } else {
       item.style.transform = '';
       deleteBg.style.opacity = '0';
