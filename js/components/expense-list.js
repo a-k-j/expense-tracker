@@ -4,6 +4,7 @@ import { deleteExpense } from '../db.js';
 import { formatAmount, friendlyDay, formatTime } from '../utils/date-utils.js';
 import { openEditExpense } from './expense-form.js';
 import { showToast } from './toast.js';
+import { showConfirm } from './confirm-dialog.js';
 
 /**
  * Render a grouped expense list into a container
@@ -133,7 +134,7 @@ function addSwipeToDelete(wrapper, item, deleteBg, expense, onChanged) {
     }
   }, { passive: true });
 
-  item.addEventListener('touchend', () => {
+  item.addEventListener('touchend', async () => {
     if (!active) return;
     active = false;
     item.style.transition = '';
@@ -141,7 +142,14 @@ function addSwipeToDelete(wrapper, item, deleteBg, expense, onChanged) {
     if (curX < -THRESHOLD) {
       // Hold at swiped position and ask for confirmation
       item.style.transform = `translateX(-${THRESHOLD}px)`;
-      const confirmed = confirm('Delete this expense?');
+      const confirmed = await showConfirm({
+        title: 'Delete Expense?',
+        message: 'This expense will be permanently deleted.',
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        variant: 'danger',
+      });
+
       if (confirmed) {
         item.style.transform = `translateX(-100%)`;
         item.style.opacity = '0';

@@ -5,6 +5,7 @@ import { getTodayStr, formatAmount, getSmartDefaultDate, saveLastUsedDate } from
 import { showToast } from './toast.js';
 import { renderCategoryGrid } from './category-grid.js';
 import { createDatePicker } from './date-picker.js';
+import { showConfirm } from './confirm-dialog.js';
 
 let sheetEl   = null;
 let overlayEl = null;
@@ -185,7 +186,14 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
   // Delete (edit mode)
   if (isEdit) {
     document.getElementById('expense-delete').addEventListener('click', async () => {
-      if (!confirm('Delete this expense?')) return;
+      const confirmed = await showConfirm({
+        title: 'Delete Expense?',
+        message: 'This expense will be permanently deleted.',
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        variant: 'danger',
+      });
+      if (!confirmed) return;
       await deleteExpense(expense.id);
       showToast('Expense deleted', 'success');
       closeSheet();

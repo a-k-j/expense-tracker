@@ -1,2 +1,2 @@
 // js/config.js — App-wide constants
-export const APP_VERSION = '1.15.0';
+export const APP_VERSION = '1.16.0';
