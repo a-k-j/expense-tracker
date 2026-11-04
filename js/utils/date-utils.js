@@ -125,7 +125,6 @@ const STICKY_DURATION   = 30 * 60 * 1000; // 30 minutes
 
 /**
  * Returns the last-used date if it was set within 30 minutes, otherwise today.
- * Prevents returning a future date.
  */
 export function getSmartDefaultDate() {
   try {
@@ -134,9 +133,7 @@ export function getSmartDefaultDate() {
     if (savedDate && savedTs) {
       const elapsed = Date.now() - savedTs;
       if (elapsed < STICKY_DURATION) {
-        // Don't return a future date
-        const today = getTodayStr();
-        return savedDate <= today ? savedDate : today;
+        return savedDate;
       }
     }
   } catch (_) { /* localStorage unavailable — fall through */ }

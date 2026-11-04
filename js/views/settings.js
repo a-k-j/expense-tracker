@@ -167,7 +167,6 @@ async function buildSettings(page) {
 
   const endPicker = createDatePicker({
     value: exportEndDate,
-    max: toDateStr(new Date()),
     id: 'export-end',
     ariaLabel: 'Export end date',
     onChange: (val) => { exportEndDate = val; },

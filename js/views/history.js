@@ -77,18 +77,26 @@ export async function renderHistory(container) {
   }
 
   // Mount custom date pickers
+  let endPickerEl = null;
+
   const startPickerEl = createDatePicker({
     value: startDate,
-    max: toDateStr(new Date()),
     id: 'hist-start',
     ariaLabel: 'Start date',
-    onChange: (val) => { startDate = val; loadData(); },
+    onChange: (val) => {
+      startDate = val;
+      // Keep the range valid: if "from" moves past "to", snap "to" to that month's end
+      if (startDate > endDate) {
+        endDate = toDateStr(getMonthEnd(new Date(startDate + 'T00:00:00')));
+        endPickerEl?._setValue(endDate);
+      }
+      loadData();
+    },
   });
   document.getElementById('hist-start-picker').appendChild(startPickerEl);
 
-  const endPickerEl = createDatePicker({
+  endPickerEl = createDatePicker({
     value: endDate,
-    max: toDateStr(new Date()),
     id: 'hist-end',
     ariaLabel: 'End date',
     onChange: (val) => { endDate = val; loadData(); },

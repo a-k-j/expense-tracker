@@ -1,7 +1,7 @@
 // js/components/expense-form.js — Add/Edit expense bottom sheet
 
 import { getCategories, addExpense, updateExpense, deleteExpense } from '../db.js';
-import { getTodayStr, formatAmount, getSmartDefaultDate, saveLastUsedDate } from '../utils/date-utils.js';
+import { formatAmount, getSmartDefaultDate, saveLastUsedDate } from '../utils/date-utils.js';
 import { showToast } from './toast.js';
 import { renderCategoryGrid } from './category-grid.js';
 import { createDatePicker } from './date-picker.js';
@@ -171,7 +171,6 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
   let selectedDate = defaultDate;
   const datePicker = createDatePicker({
     value: selectedDate,
-    max: getTodayStr(),
     id: 'expense-date',
     ariaLabel: 'Expense date',
     onChange: (val) => { selectedDate = val; },
@@ -242,7 +241,7 @@ async function handleSave({ isEdit, expense, selectedCategoryGetter, dateGetter,
       await addExpense({ amount: amountVal, categoryId, note, customName, date, excludeFromAnalytics });
       showToast(`${formatAmount(amountVal)} added ✓`, 'success');
     }
-    // Remember the date for 30 minutes
+    // Remember the date so adding several back-dated entries is quicker
     saveLastUsedDate(date);
     closeSheet();
     onSavedCb?.();

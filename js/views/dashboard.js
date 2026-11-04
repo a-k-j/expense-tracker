@@ -6,7 +6,7 @@ import {
   getTodayExpenses, getMonthExpenses, getCategories, sumByCategory, sumTotal,
   getSetting, setSetting,
 } from '../db.js';
-import { formatAmount, formatAmountShort, monthLabel, getMonthStart, getMonthEnd, getTodayStr, getSmartDefaultDate } from '../utils/date-utils.js';
+import { formatAmount, formatAmountShort, monthLabel, getSmartDefaultDate, saveLastUsedDate } from '../utils/date-utils.js';
 import { renderExpenseList } from '../components/expense-list.js';
 import { renderBarChart }    from '../components/chart.js';
 import { renderCategoryGrid } from '../components/category-grid.js';
@@ -37,9 +37,9 @@ export async function renderDashboard(container) {
   const includedTodayTotal = await sumTotal(todayExpenses.filter(e => !e.excludeFromAnalytics));
   const hasExcluded = includedMonthTotal !== monthTotal;
 
-  // Check budget alerts (uses full total — real spending)
+  // Check budget alerts against analytics-included spending only
   if (budget > 0) {
-    await checkBudgetAlerts(monthTotal, budget, alertsSeen);
+    await checkBudgetAlerts(includedMonthTotal, budget, alertsSeen);
   }
 
   const budgetPct   = budget > 0 ? Math.min((includedMonthTotal / budget) * 100, 100) : 0;
@@ -198,7 +198,6 @@ export async function renderDashboard(container) {
   let quickDateValue = getSmartDefaultDate();
   const quickDatePicker = createDatePicker({
     value: quickDateValue,
-    max: getTodayStr(),
     id: 'quick-date',
     ariaLabel: 'Quick-add date',
     onChange: (val) => { quickDateValue = val; },
@@ -233,6 +232,8 @@ export async function renderDashboard(container) {
       const excludeFromAnalytics = document.getElementById('quick-exclude-analytics')?.checked || false;
       const { addExpense } = await import('../db.js');
       await addExpense({ amount, categoryId: selectedQuickCat, customName, date, excludeFromAnalytics });
+      // Remember the date so adding several back-dated entries is quicker
+      saveLastUsedDate(date);
       showToast(`${formatAmount(amount)} added ✓`, 'success');
       amountInput.value = '';
       const quickNameInput = document.getElementById('quick-custom-name');

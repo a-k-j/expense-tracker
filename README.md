@@ -11,7 +11,7 @@ SpendSense is a modern, privacy-first Progressive Web Application (PWA) designed
 - **🔒 100% Private & Local-First**: All your data stays strictly in your browser using IndexedDB. No accounts, no cloud sync, no tracking, and no external servers.
 - **⚡ Progressive Web App (PWA)**: Works offline out of the box. Installable on iOS, Android, and Desktop like a native application.
 - **⚡ Quick Add & Preset Amounts**: Log expenses in seconds with quick-preset buttons or the full-detail bottom sheet.
-- **🎯 Monthly Budget & Smart Alerts**: Set a target monthly budget and receive automated progress bar updates and threshold notifications (50%, 75%, 90%, 100%).
+- **🎯 Monthly Budget & Smart Alerts**: Set a target monthly budget and receive automated progress bar updates and threshold notifications (50%, 75%, 90%, 100%). Expenses marked *Exclude from Analytics* don't count towards budget progress or alerts.
 - **📊 Analytics & Visual Insights**:
   - **Week-over-Week Comparison**: Track spending changes compared to the previous week.
   - **Daily Breakdown**: See day-by-day spending for the current week.
@@ -78,7 +78,7 @@ SpendSense can be installed on your phone or computer for a full-screen, app-lik
 
 ### 2. Adding & Editing Expenses
 - Tap the central **`+`** button in the bottom navigation bar to open the **Add Expense** bottom sheet.
-- Input the **Amount**, pick a **Category**, select a **Date** (defaults to today or last used date), and add optional **Notes** or custom names.
+- Input the **Amount**, pick a **Category**, select a **Date** (defaults to today or the last-used date, which stays sticky for 30 minutes), and add optional **Notes** or custom names. Past and future dates are both supported.
 - Under **History**, click any expense item to **Edit** or **Delete** it.
 
 ### 3. History & Filtering
