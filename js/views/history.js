@@ -19,11 +19,15 @@ export async function renderHistory(container) {
   let startDate  = defaultStart;
   let endDate    = defaultEnd;
   let activeCatId = null; // null = all
+  let sortOrder   = 'desc'; // 'desc' = newest first, 'asc' = oldest first
 
   page.innerHTML = `
     <!-- Header -->
-    <div style="padding:8px 0 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0 16px">
       <h1 style="font-size:22px;font-weight:800;letter-spacing:-0.5px">History</h1>
+      <button class="filter-chip" id="hist-sort-btn" type="button" aria-label="Sort expenses: newest first" aria-pressed="false">
+        <span id="hist-sort-label">↓ Newest first</span>
+      </button>
     </div>
 
     <!-- Date Range -->
@@ -73,7 +77,7 @@ export async function renderHistory(container) {
     document.getElementById('hist-total').textContent = formatAmount(total);
     document.getElementById('hist-count').textContent = expenses.length;
 
-    renderExpenseList(document.getElementById('hist-list'), expenses, catMap, loadData);
+    renderExpenseList(document.getElementById('hist-list'), expenses, catMap, loadData, sortOrder);
   }
 
   // Mount custom date pickers
@@ -102,6 +106,17 @@ export async function renderHistory(container) {
     onChange: (val) => { endDate = val; loadData(); },
   });
   document.getElementById('hist-end-picker').appendChild(endPickerEl);
+
+  // Sort order toggle
+  const sortBtn = document.getElementById('hist-sort-btn');
+  sortBtn.addEventListener('click', () => {
+    sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+    const oldestFirst = sortOrder === 'asc';
+    document.getElementById('hist-sort-label').textContent = oldestFirst ? '↑ Oldest first' : '↓ Newest first';
+    sortBtn.setAttribute('aria-pressed', String(oldestFirst));
+    sortBtn.setAttribute('aria-label', `Sort expenses: ${oldestFirst ? 'oldest' : 'newest'} first`);
+    loadData();
+  });
 
   // Category chip listeners
   document.getElementById('cat-chips').addEventListener('click', (e) => {

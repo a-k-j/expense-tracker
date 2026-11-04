@@ -85,6 +85,7 @@ SpendSense can be installed on your phone or computer for a full-screen, app-lik
 - Navigate to the **History** tab (`# /history`).
 - Use the **Start Date** and **End Date** calendar pickers to specify a custom date window.
 - Filter transactions by tapping individual **Category Chips** or select **"All"**.
+- Toggle the sort button between **Newest first** and **Oldest first**.
 - Displays total spent and transaction counts for the selected filter.
 
 ### 4. Analytics & Trends

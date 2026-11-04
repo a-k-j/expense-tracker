@@ -9,11 +9,12 @@ import { showConfirm } from './confirm-dialog.js';
 /**
  * Render a grouped expense list into a container
  * @param {HTMLElement} container
- * @param {Array} expenses - sorted newest-first, already fetched
+ * @param {Array} expenses - already fetched
  * @param {Object} categoryMap - { id: category }
  * @param {Function} onChanged - callback when an expense is mutated
+ * @param {'asc'|'desc'} [sortOrder='desc'] - date sort order (oldest first or newest first)
  */
-export function renderExpenseList(container, expenses, categoryMap, onChanged) {
+export function renderExpenseList(container, expenses, categoryMap, onChanged, sortOrder = 'desc') {
   container.innerHTML = '';
 
   if (!expenses.length) {
@@ -26,14 +27,21 @@ export function renderExpenseList(container, expenses, categoryMap, onChanged) {
     return;
   }
 
+  const direction = sortOrder === 'asc' ? 1 : -1;
+  const sortedExpenses = [...expenses].sort((a, b) => {
+    const byDate = a.date.localeCompare(b.date);
+    if (byDate !== 0) return byDate * direction;
+    return (a.createdAt || '').localeCompare(b.createdAt || '') * direction;
+  });
+
   // Group by date
   const groups = {};
-  for (const e of expenses) {
+  for (const e of sortedExpenses) {
     if (!groups[e.date]) groups[e.date] = [];
     groups[e.date].push(e);
   }
 
-  const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+  const sortedDates = Object.keys(groups).sort((a, b) => a.localeCompare(b) * direction);
 
   for (const date of sortedDates) {
     const dayExpenses = groups[date];
