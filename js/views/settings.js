@@ -11,6 +11,10 @@ import { getExpensesByDateRange } from '../db.js';
 import { toDateStr, getMonthStart, getMonthEnd, formatAmount } from '../utils/date-utils.js';
 import { exportCSV, csvFilename } from '../utils/csv-export.js';
 import { exportJSON, importJSON } from '../utils/json-backup.js';
+import {
+  getAutoBackupConfig, setAutoBackupEnabled, setAutoBackupRetention,
+  createBackup, getBackupList, restoreBackup, deleteBackup,
+} from '../utils/auto-backup.js';
 import { showToast } from '../components/toast.js';
 import { createDatePicker } from '../components/date-picker.js';
 
@@ -27,9 +31,11 @@ export async function renderSettings(container) {
 }
 
 async function buildSettings(page) {
-  const [categories, budget] = await Promise.all([
+  const [categories, budget, autoBackup, backups] = await Promise.all([
     getCategories(),
     getSetting('budget', 0),
+    getAutoBackupConfig(),
+    getBackupList(),
   ]);
 
   page.innerHTML = `
@@ -128,6 +134,46 @@ async function buildSettings(page) {
           <div class="settings-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
           <input type="file" accept=".json" id="import-json-input" style="display:none" aria-label="Import JSON backup" />
         </label>
+      </div>
+    </div>
+
+    <!-- Automatic Backups -->
+    <div class="settings-section">
+      <div class="settings-section-title">Automatic Backups</div>
+      <div class="settings-list">
+        <div class="settings-item" style="cursor:default;">
+          <div class="settings-item-icon" style="background:rgba(16,185,129,0.15)">🛟</div>
+          <div class="settings-item-info">
+            <div class="settings-item-title">On-device backup</div>
+            <div class="settings-item-sub">${autoBackupStatusText(autoBackup, backups)}</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="auto-backup-enabled" ${autoBackup.enabled ? 'checked' : ''} aria-label="Enable automatic backups" />
+            <span class="toggle-track"></span>
+            <span class="toggle-knob"></span>
+          </label>
+        </div>
+        <div class="settings-item" style="cursor:default;">
+          <div class="settings-item-icon" style="background:rgba(59,130,246,0.15)">🗂️</div>
+          <div class="settings-item-info">
+            <div class="settings-item-title">Keep automatic backups</div>
+            <div class="settings-item-sub">Oldest ones are deleted automatically</div>
+          </div>
+          <select id="auto-backup-retention" class="form-input" style="width:84px;padding:6px 8px;font-weight:700;font-size:15px" aria-label="Number of automatic backups to keep">
+            ${[3, 5, 7, 14, 30].map(n => `<option value="${n}" ${autoBackup.retention === n ? 'selected' : ''}>${n}</option>`).join('')}
+          </select>
+        </div>
+        <button class="settings-item" id="backup-now-btn">
+          <div class="settings-item-icon" style="background:rgba(124,58,237,0.15)">💾</div>
+          <div class="settings-item-info">
+            <div class="settings-item-title">Backup Now</div>
+            <div class="settings-item-sub">Create a snapshot on this device</div>
+          </div>
+          <div class="settings-item-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </button>
+      </div>
+      <div id="backup-list-container" style="margin-top:12px">
+        ${renderBackupList(backups)}
       </div>
     </div>
 
@@ -234,12 +280,137 @@ async function buildSettings(page) {
     e.target.value = '';
   });
 
+  // Auto backup toggle
+  document.getElementById('auto-backup-enabled').addEventListener('change', async (e) => {
+    const enabled = e.target.checked;
+    try {
+      await setAutoBackupEnabled(enabled);
+      if (enabled) {
+        await createBackup({ type: 'auto' });
+        showToast('Auto backup enabled and snapshot created', 'success');
+      } else {
+        showToast('Auto backup disabled', 'info');
+      }
+      await buildSettings(page);
+    } catch (err) {
+      showToast('Could not update auto backup', 'error');
+    }
+  });
+
+  // Automatic backup retention
+  document.getElementById('auto-backup-retention').addEventListener('change', async (e) => {
+    try {
+      const keep = await setAutoBackupRetention(e.target.value);
+      showToast(`Keeping latest ${keep} automatic backup(s)`, 'success');
+      await buildSettings(page);
+    } catch (err) {
+      showToast('Could not update backup retention', 'error');
+    }
+  });
+
+  // Backup now
+  document.getElementById('backup-now-btn').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    try {
+      await createBackup({ type: 'manual' });
+      showToast('Backup created on this device ✓', 'success');
+      await buildSettings(page);
+    } catch (err) {
+      btn.disabled = false;
+      showToast('Backup failed', 'error');
+    }
+  });
+
+  // Restore or delete a saved backup
+  document.getElementById('backup-list-container').addEventListener('click', async (e) => {
+    const restoreBtn = e.target.closest('.backup-restore-btn');
+    if (restoreBtn) {
+      const id = parseInt(restoreBtn.dataset.id, 10);
+      if (!confirm('Restore this backup? This will replace all current data.')) return;
+      try {
+        const result = await restoreBackup(id);
+        showToast(`Restored ${result.expenses} expense(s)`, 'success');
+        await buildSettings(page);
+      } catch (err) {
+        showToast('Restore failed: ' + err.message, 'error');
+      }
+      return;
+    }
+
+    const deleteBtn = e.target.closest('.backup-delete-btn');
+    if (deleteBtn) {
+      const id = parseInt(deleteBtn.dataset.id, 10);
+      if (!confirm('Delete this backup permanently?')) return;
+      try {
+        await deleteBackup(id);
+        showToast('Backup deleted', 'success');
+        await buildSettings(page);
+      } catch (err) {
+        showToast('Could not delete backup', 'error');
+      }
+    }
+  });
+
   // Clear all data
   document.getElementById('clear-data-btn').addEventListener('click', async () => {
     if (!confirm('Delete ALL expenses? This cannot be undone.')) return;
     await db.expenses.clear();
     showToast('All expenses deleted', 'success');
   });
+}
+
+function autoBackupStatusText(config, backups) {
+  if (!config.enabled) return 'Off · no new snapshots will be created';
+
+  const autoCount = backups.filter(b => b.type === 'auto').length;
+  const last = config.lastBackupAt ? formatBackupDate(config.lastBackupAt) : 'never';
+  return `On · last ${last} · ${autoCount} automatic saved`;
+}
+
+function renderBackupList(backups) {
+  if (!backups.length) {
+    return `<p style="color:var(--text-muted);font-size:13px;padding:8px 12px">No backups yet.</p>`;
+  }
+
+  const rows = backups.map(b => {
+    const isManual = b.type === 'manual';
+    return `
+      <div class="settings-item" style="cursor:default;flex-wrap:wrap;gap:8px">
+        <div class="settings-item-icon" style="background:rgba(148,163,184,0.15)">${isManual ? '📌' : '🕒'}</div>
+        <div class="settings-item-info">
+          <div class="settings-item-title">${formatBackupDate(b.createdAt)}</div>
+          <div class="settings-item-sub">${isManual ? 'Manual' : 'Automatic'} · ${formatBackupSize(b.size)}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:auto">
+          <button class="filter-chip backup-restore-btn" data-id="${b.id}" type="button">Restore</button>
+          <button class="filter-chip backup-delete-btn" data-id="${b.id}" type="button" style="color:var(--danger)">Delete</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;padding:0 4px 6px">Saved backups</div>
+    <div class="settings-list">${rows}</div>`;
+}
+
+function formatBackupDate(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'Unknown date';
+  return d.toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatBackupSize(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function renderCategoryList(container, categories, page) {

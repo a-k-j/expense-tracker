@@ -8,6 +8,13 @@ db.version(1).stores({
   settings:   'key',
 });
 
+db.version(2).stores({
+  expenses:   '++id, date, categoryId, amount, createdAt, [date+categoryId]',
+  categories: '++id, name, order',
+  settings:   'key',
+  backups:    '++id, createdAt, type',
+});
+
 // ── Default categories ──────────────────────────────────────────────────────
 const DEFAULT_CATEGORIES = [
   { name: 'Food',             emoji: '🍔', color: 'hsl(25, 95%, 55%)',   order: 0, isDefault: true },

@@ -7,6 +7,7 @@ import { renderHistory }    from './views/history.js';
 import { renderAnalytics }  from './views/analytics.js';
 import { renderSettings }   from './views/settings.js';
 import { getCategories }    from './db.js';
+import { maybeRunAutoBackup } from './utils/auto-backup.js';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentView = 'dashboard';
@@ -29,6 +30,16 @@ async function boot() {
 
   // Seed default data
   await seedIfEmpty();
+
+  // Create a daily on-device snapshot when due (never blocks the UI)
+  maybeRunAutoBackup().catch(() => {});
+
+  // Also check when the app is brought back to the foreground
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      maybeRunAutoBackup().catch(() => {});
+    }
+  });
 
   // Init expense form (attaches overlay listener)
   initExpenseForm();

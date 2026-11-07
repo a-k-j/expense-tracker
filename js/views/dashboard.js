@@ -44,6 +44,9 @@ export async function renderDashboard(container) {
 
   const budgetPct   = budget > 0 ? Math.min((includedMonthTotal / budget) * 100, 100) : 0;
   const warnClass   = budgetPct >= 100 ? 'warn-100' : budgetPct >= 90 ? 'warn-90' : budgetPct >= 75 ? 'warn-75' : budgetPct >= 50 ? 'warn-50' : '';
+  const now         = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const monthPct    = Math.min((now.getDate() / daysInMonth) * 100, 100);
 
   page.innerHTML = `
     <!-- Header -->
@@ -84,7 +87,7 @@ export async function renderDashboard(container) {
       <div class="budget-progress">
         <div class="budget-progress-label">
           <span>Budget: ${formatAmountShort(budget)}</span>
-          <span>${budgetPct.toFixed(0)}%</span>
+          <span>${budgetPct.toFixed(0)}% Spent · ${monthPct.toFixed(0)}% Month Done</span>
         </div>
         <div class="budget-progress-track">
           <div class="budget-progress-fill ${warnClass}" style="width:0%" id="budget-fill"></div>

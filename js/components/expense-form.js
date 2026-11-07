@@ -164,8 +164,8 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
     sheetEl.classList.add('open');
   });
 
-  // Focus amount
-  setTimeout(() => document.getElementById('expense-amount')?.focus(), 400);
+  // Focus amount (place the caret at the end when editing an existing value)
+  setTimeout(focusAmountAtEnd, 400);
 
   // Mount date picker
   let selectedDate = defaultDate;
@@ -202,6 +202,21 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
 
   // Allow swipe-down to close
   addSwipeDownClose(sheetEl);
+}
+
+function focusAmountAtEnd() {
+  const input = document.getElementById('expense-amount');
+  if (!input) return;
+  input.focus({ preventScroll: true });
+  if (!input.value) return;
+  try {
+    input.setSelectionRange(input.value.length, input.value.length);
+  } catch (_) {
+    // Number inputs don't support setSelectionRange; reassigning puts the caret at the end
+    const value = input.value;
+    input.value = '';
+    input.value = value;
+  }
 }
 
 async function handleSave({ isEdit, expense, selectedCategoryGetter, dateGetter, catMap }) {

@@ -22,6 +22,7 @@ SpendSense is a modern, privacy-first Progressive Web Application (PWA) designed
 - **💾 Complete Data Portability**:
   - **CSV Export**: Export transactions for custom date ranges for analysis in Excel or Google Sheets.
   - **JSON Backup & Restore**: Backup your entire dataset to a JSON file and restore/merge anytime.
+  - **On-Device Auto Backup**: Automatic daily snapshots with configurable retention and manual snapshots, all stored locally.
 
 ---
 
@@ -72,7 +73,7 @@ SpendSense can be installed on your phone or computer for a full-screen, app-lik
 
 ### 1. Dashboard (Home View)
 - **Monthly Summary Card**: View total spending for the current month, today's total, entry count, and remaining budget balance.
-- **Budget Progress Bar**: Visual progress fill that changes color as you approach or exceed your budget threshold.
+- **Budget Progress Bar**: Visual progress fill that changes color as you approach or exceed your budget threshold, with both budget spent and month elapsed percentages.
 - **Quick Add Bar**: Type an amount and pick a category chip for instant entry.
 - **Category Grid**: Tap any category tile to quickly log an expense under that category.
 
@@ -100,6 +101,7 @@ SpendSense can be installed on your phone or computer for a full-screen, app-lik
 - **CSV Export**: Select a date range and download your expenses as a UTF-8 CSV file.
 - **JSON Data Backup**: Create a full backup (`spendsense_backup_YYYY-MM-DD.json`).
 - **JSON Data Restore**: Restore or merge backup files back into the browser storage.
+- **Automatic On-Device Backups**: Daily snapshots stored in IndexedDB. Choose how many automatic backups to keep (older ones are pruned automatically), create a manual **Backup Now** snapshot, or restore/delete any saved backup. Manual backups are never pruned automatically.
 - **Reset App**: Erase all data and reset to default categories.
 
 ---
@@ -141,6 +143,7 @@ expense-tracker/
 │   │   ├── expense-list.js   # Render expense lists with edit/delete actions
 │   │   └── toast.js          # Feedback toast notification system
 │   ├── utils/
+│   │   ├── auto-backup.js    # On-device snapshots, retention & restore logic
 │   │   ├── csv-export.js     # CSV file generator & downloader
 │   │   ├── date-utils.js    # Date formatting & calculation utilities
 │   │   └── json-backup.js   # Complete JSON export & import restore helpers

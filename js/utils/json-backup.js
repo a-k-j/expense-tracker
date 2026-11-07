@@ -24,6 +24,42 @@ export async function exportJSON() {
 }
 
 /**
+ * Restore from an already-parsed backup payload.
+ * @param {object} data - Backup payload with version, expenses, categories and settings
+ * @param {boolean} merge - true = merge, false = replace all
+ */
+export async function restoreFromPayload(data, merge = false) {
+  if (!data.version || !data.expenses || !data.categories) {
+    throw new Error('Invalid backup file format.');
+  }
+
+  if (!merge) {
+    // Clear existing data
+    await db.transaction('rw', db.expenses, db.categories, db.settings, async () => {
+      await db.expenses.clear();
+      await db.categories.clear();
+      await db.settings.clear();
+    });
+  }
+
+  // Re-import
+  await db.transaction('rw', db.expenses, db.categories, db.settings, async () => {
+    if (!merge) {
+      await db.categories.bulkAdd(data.categories);
+      await db.expenses.bulkAdd(data.expenses);
+    } else {
+      await db.categories.bulkPut(data.categories);
+      await db.expenses.bulkPut(data.expenses);
+    }
+    if (data.settings) {
+      await db.settings.bulkPut(data.settings);
+    }
+  });
+
+  return { expenses: data.expenses.length, categories: data.categories.length };
+}
+
+/**
  * Import from a JSON backup file
  * @param {File} file - JSON file from input[type=file]
  * @param {boolean} merge - true = merge, false = replace all
@@ -34,34 +70,7 @@ export async function importJSON(file, merge = false) {
     reader.onload = async (e) => {
       try {
         const data = JSON.parse(e.target.result);
-        if (!data.version || !data.expenses || !data.categories) {
-          throw new Error('Invalid backup file format.');
-        }
-
-        if (!merge) {
-          // Clear existing data
-          await db.transaction('rw', db.expenses, db.categories, db.settings, async () => {
-            await db.expenses.clear();
-            await db.categories.clear();
-            await db.settings.clear();
-          });
-        }
-
-        // Re-import
-        await db.transaction('rw', db.expenses, db.categories, db.settings, async () => {
-          if (!merge) {
-            await db.categories.bulkAdd(data.categories);
-            await db.expenses.bulkAdd(data.expenses);
-          } else {
-            await db.categories.bulkPut(data.categories);
-            await db.expenses.bulkPut(data.expenses);
-          }
-          if (data.settings) {
-            await db.settings.bulkPut(data.settings);
-          }
-        });
-
-        resolve({ expenses: data.expenses.length, categories: data.categories.length });
+        resolve(await restoreFromPayload(data, merge));
       } catch (err) {
         reject(err);
       }
