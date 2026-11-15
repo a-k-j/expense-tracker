@@ -1,6 +1,6 @@
 // js/components/chart.js — CSS bar chart + SVG trend line
 
-import { formatAmountShort } from '../utils/date-utils.js';
+import { formatAmount, formatAmountShort } from '../utils/date-utils.js';
 
 /**
  * Render a horizontal CSS bar chart by category
@@ -191,6 +191,7 @@ export function renderDonutChart(container, segments, opts = {}) {
   const pctBase = opts.percentBase && opts.percentBase > 0 ? opts.percentBase : total;
 
   let offset = 0;
+  const arcAngles = [];
   const interactive = typeof opts.onSliceClick === 'function';
 
   const arcs = data.map((s, i) => {
@@ -209,6 +210,7 @@ export function renderDonutChart(container, segments, opts = {}) {
       transform="rotate(-90 ${size / 2} ${size / 2})">
       <title>${escapeHtml(s.label)}: ${formatAmountShort(s.value)}</title>
     </circle>`;
+    arcAngles.push(-90 + ((offset + len / 2) / circ) * 360);
     offset += len;
     return arc;
   }).join('');
@@ -249,8 +251,113 @@ export function renderDonutChart(container, segments, opts = {}) {
       const segment = data[index];
       if (segment) opts.onSliceClick(segment, index);
     };
+
+    // Long-press tooltip (touch or mouse): category + amount
+    container.style.position = 'relative';
+    const tooltip = document.createElement('div');
+    tooltip.className = 'donut-tooltip';
+    tooltip.setAttribute('role', 'tooltip');
+    tooltip.hidden = true;
+    container.appendChild(tooltip);
+
+    let pressTimer = null;
+    let suppressClickIndex = -1;
+
+    const hideTooltip = () => {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+      tooltip.hidden = true;
+      tooltip.innerHTML = '';
+    };
+
+    const showTooltip = (index) => {
+      const segment = data[index];
+      const angle = arcAngles[index];
+      if (!segment || angle === undefined) return;
+
+      const pct = ((segment.value / pctBase) * 100).toFixed(0);
+      tooltip.innerHTML = `
+        <span class="donut-tooltip-label">${escapeHtml(segment.label)}</span>
+        <span class="donut-tooltip-value">${formatAmount(segment.value)} · ${pct}%</span>`;
+      tooltip.hidden = false;
+
+      const contRect  = container.getBoundingClientRect();
+      const wrap      = container.querySelector('.donut-wrap');
+      const wrapRect  = wrap.getBoundingClientRect();
+      const scale     = wrapRect.width / size;
+      const centerX   = wrapRect.left - contRect.left + wrapRect.width / 2;
+      const centerY   = wrapRect.top - contRect.top + wrapRect.height / 2;
+      const radius    = wrapRect.width / 2 - (stroke * scale) / 2;
+      const rad       = angle * Math.PI / 180;
+      let left        = centerX + Math.cos(rad) * radius;
+      const top       = centerY + Math.sin(rad) * radius;
+
+      tooltip.style.left = left + 'px';
+      tooltip.style.top  = top + 'px';
+
+      const half   = tooltip.offsetWidth / 2;
+      const minLeft = 8 + half;
+      const maxLeft = container.clientWidth - 8 - half;
+      left = maxLeft > minLeft
+        ? Math.max(minLeft, Math.min(maxLeft, left))
+        : container.clientWidth / 2;
+      tooltip.style.left = left + 'px';
+    };
+
+    container.querySelectorAll('.donut-slice').forEach(circle => {
+      const index = Number(circle.dataset.sliceIndex);
+      let startX = 0;
+      let startY = 0;
+      let pointerId = null;
+
+      circle.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        suppressClickIndex = -1;
+        startX = e.clientX;
+        startY = e.clientY;
+        pointerId = e.pointerId;
+        try { circle.setPointerCapture(e.pointerId); } catch (_) {}
+
+        if (pressTimer) clearTimeout(pressTimer);
+        pressTimer = setTimeout(() => {
+          pressTimer = null;
+          suppressClickIndex = index;
+          showTooltip(index);
+          navigator.vibrate?.(8);
+        }, 450);
+      });
+
+      circle.addEventListener('pointermove', (e) => {
+        if (!pressTimer || e.pointerId !== pointerId) return;
+        if (Math.hypot(e.clientX - startX, e.clientY - startY) > 8) hideTooltip();
+      });
+
+      circle.addEventListener('pointerup', (e) => {
+        if (e.pointerId !== pointerId) return;
+        pointerId = null;
+        hideTooltip();
+      });
+
+      circle.addEventListener('pointercancel', () => {
+        pointerId = null;
+        hideTooltip();
+      });
+
+      // Long-press on Android can otherwise raise the selection/context menu.
+      circle.addEventListener('contextmenu', (e) => e.preventDefault());
+    });
+
     container.querySelectorAll('[data-slice-index]').forEach(el => {
-      el.addEventListener('click', () => trigger(Number(el.dataset.sliceIndex)));
+      el.addEventListener('click', () => {
+        const index = Number(el.dataset.sliceIndex);
+        if (suppressClickIndex === index) {
+          suppressClickIndex = -1;
+          if (el.classList.contains('donut-slice')) return;
+        }
+        trigger(index);
+      });
       el.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
           e.preventDefault();

@@ -1,6 +1,7 @@
 // js/components/slice-detail.js — Bottom sheet listing the entries behind a chart slice
 
 import { formatAmount, formatDate } from '../utils/date-utils.js';
+import { addSwipeDownClose } from '../utils/sheet-swipe.js';
 
 let sheetEl = null;
 let overlayEl = null;
@@ -92,6 +93,7 @@ export function openSliceDetail({
   `;
 
   document.body.appendChild(sheetEl);
+  addSwipeDownClose(sheetEl, closeSliceDetail);
   requestAnimationFrame(() => {
     overlay.classList.add('active');
     sheetEl.classList.add('open');

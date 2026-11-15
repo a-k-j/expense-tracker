@@ -101,12 +101,13 @@ SpendSense can be installed on your phone or computer for a full-screen, app-lik
 - **Lifestyle** excludes rent, investments, savings and anything marked *Exclude from Analytics*. It shows:
   - **Week-over-Week**: A comparison of this week's total versus last week's total with delta percentages.
   - **30-Day Spending Trend**: Daily spending peaks and averages.
-  - **This Month — Where It Went**: A donut of the month's lifestyle spending by category. Tap any slice or legend row to see the transactions behind it.
+  - **This Month — Where It Went**: A donut of the month's lifestyle spending by category. Tap any slice or legend row to see the transactions behind it, or press and hold a slice to preview its category and amount.
 - **Money Flow** shows the whole month:
   - **Income** = the month's salary (default or per-month override) plus any extra income entries.
   - **KPI cards** for Spent, Invested, Saved and Left (or Overspent), with percentages of income.
   - **Where the money went** donut: rent & utilities, lifestyle, investments, savings and left unspent.
-  - **Tap any slice or legend row** to see the transactions behind it.
+  - **Tap any slice or legend row** to see the transactions behind it, or **press and hold** a slice for a quick category + amount preview.
+  - The detail sheet can be dismissed with the Close button, the overlay, `Esc`, or by swiping it down.
   - **Last 6 months** bar graph comparing income, outflow and investments.
   - **Edit salary** for the selected month, or **+ Income** to add money from parents, a bonus, refund or gift.
 
@@ -154,7 +155,7 @@ expense-tracker/
 │   └── index.css             # Main stylesheet & CSS design system
 ├── js/
 │   ├── app.js                # App entry point, Router, & Navigation setup
-│   ├── config.js             # App constants & versioning (v1.20.0)
+│   ├── config.js             # App constants & versioning (v1.22.0)
 │   ├── db.js                 # Dexie.js setup, schema definitions & CRUD helpers
 │   ├── components/
 │   │   ├── category-grid.js  # Category selection grid
@@ -167,8 +168,10 @@ expense-tracker/
 │   ├── utils/
 │   │   ├── auto-backup.js    # On-device snapshots, retention & restore logic
 │   │   ├── csv-export.js     # CSV file generator & downloader
-│   │   ├── date-utils.js    # Date formatting & calculation utilities
-│   │   └── json-backup.js   # Complete JSON export & import restore helpers
+│   │   ├── date-utils.js     # Date formatting & calculation utilities
+│   │   ├── input-focus.js    # Caret-at-end focus helper for amount inputs
+│   │   ├── json-backup.js    # Complete JSON export & import restore helpers
+│   │   └── sheet-swipe.js    # Swipe-down-to-close behaviour for bottom sheets
 │   └── views/
 │       ├── analytics.js      # Lifestyle analytics + Money Flow (salary/income/investments)
 │       ├── dashboard.js      # Main home dashboard view

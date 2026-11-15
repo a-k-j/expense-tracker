@@ -7,6 +7,7 @@ import { renderCategoryGrid } from './category-grid.js';
 import { createDatePicker } from './date-picker.js';
 import { showConfirm } from './confirm-dialog.js';
 import { focusAmountAtEnd } from '../utils/input-focus.js';
+import { addSwipeDownClose } from '../utils/sheet-swipe.js';
 
 let sheetEl   = null;
 let overlayEl = null;
@@ -202,7 +203,7 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
   }
 
   // Allow swipe-down to close
-  addSwipeDownClose(sheetEl);
+  addSwipeDownClose(sheetEl, closeSheet);
 }
 
 async function handleSave({ isEdit, expense, selectedCategoryGetter, dateGetter, catMap }) {
@@ -261,33 +262,4 @@ export function closeSheet() {
     sheetEl?.remove();
     sheetEl = null;
   }, 400);
-}
-
-function addSwipeDownClose(el) {
-  let startY = 0;
-  let isDragging = false;
-
-  el.addEventListener('touchstart', (e) => {
-    startY = e.touches[0].clientY;
-    isDragging = true;
-  }, { passive: true });
-
-  el.addEventListener('touchmove', (e) => {
-    if (!isDragging) return;
-    const dy = e.touches[0].clientY - startY;
-    if (dy > 0) {
-      el.style.transform = `translateX(-50%) translateY(${dy}px)`;
-    }
-  }, { passive: true });
-
-  el.addEventListener('touchend', (e) => {
-    if (!isDragging) return;
-    isDragging = false;
-    const dy = e.changedTouches[0].clientY - startY;
-    if (dy > 100) {
-      closeSheet();
-    } else {
-      el.style.transform = '';
-    }
-  }, { passive: true });
 }
