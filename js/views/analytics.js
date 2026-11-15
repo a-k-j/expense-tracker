@@ -1,29 +1,86 @@
-// js/views/analytics.js — Week-over-week comparison + daily trend line
+// js/views/analytics.js — Lifestyle analytics + Money Flow (salary allocation)
 
 import {
   getCategories, getExpensesByDateRangeForAnalytics, getDailyTotalsForAnalytics,
-  sumByCategory, sumTotal,
+  sumByCategory, sumTotal, getAllExpenses, getAllIncomes, deleteIncome,
+  getSetting, categoryBucket,
 } from '../db.js';
 import {
   formatAmount, formatAmountShort,
   getThisWeekRange, getPrevWeekRange,
   getMonthStart, getMonthEnd,
-  toDateStr, dateRange, shortDayDate,
+  toDateStr, getTodayStr, dateRange, shortDayDate,
 } from '../utils/date-utils.js';
-import { renderBarChart, renderTrendLine } from '../components/chart.js';
+import { renderBarChart, renderTrendLine, renderDonutChart, renderGroupedBars } from '../components/chart.js';
+import { openIncomeModal, openSalaryModal } from '../components/income-form.js';
+import { openSliceDetail } from '../components/slice-detail.js';
+import { showToast } from '../components/toast.js';
+import { showConfirm } from '../components/confirm-dialog.js';
+
+const BUCKET_COLORS = {
+  rent:        'hsl(190, 80%, 45%)',
+  lifestyle:   'hsl(270, 65%, 58%)',
+  investment:  'hsl(150, 70%, 42%)',
+  savings:     'hsl(210, 70%, 50%)',
+  left:        'hsl(220, 15%, 62%)',
+  overspent:   'hsl(350, 75%, 55%)',
+};
+
+let analyticsMode = 'lifestyle';
+let moneyFlowMonth = null;
 
 export async function renderAnalytics(container) {
-  container.innerHTML = `<div class="page" id="analytics-page"><div class="spinner"></div></div>`;
+  container.innerHTML = `
+    <div class="page" id="analytics-page">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 12px">
+        <h1 style="font-size:22px;font-weight:800;letter-spacing:-0.5px">Analytics</h1>
+      </div>
+
+      <div class="segmented-control" role="tablist" aria-label="Analytics mode">
+        <button class="segment-btn ${analyticsMode === 'lifestyle' ? 'active' : ''}"
+                data-mode="lifestyle" role="tab" aria-selected="${analyticsMode === 'lifestyle'}">Lifestyle</button>
+        <button class="segment-btn ${analyticsMode === 'moneyflow' ? 'active' : ''}"
+                data-mode="moneyflow" role="tab" aria-selected="${analyticsMode === 'moneyflow'}">Money Flow</button>
+      </div>
+
+      <div id="analytics-body"></div>
+    </div>
+  `;
+
   const page = document.getElementById('analytics-page');
+  const body = document.getElementById('analytics-body');
 
-  const categories = await getCategories();
-  const catMap     = Object.fromEntries(categories.map(c => [c.id, c]));
+  const renderBody = async () => {
+    if (analyticsMode === 'lifestyle') await renderLifestyleBody(body);
+    else await renderMoneyFlowBody(body);
+  };
 
-  // Ranges
-  const thisWeek = getThisWeekRange();
-  const prevWeek = getPrevWeekRange();
-  const monthStart = getMonthStart();
-  const monthEnd   = getMonthEnd();
+  page.querySelectorAll('.segment-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const next = btn.dataset.mode;
+      if (next === analyticsMode) return;
+      analyticsMode = next;
+      page.querySelectorAll('.segment-btn').forEach(b => {
+        const active = b.dataset.mode === analyticsMode;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-selected', String(active));
+      });
+      renderBody();
+    });
+  });
+
+  await renderBody();
+}
+
+// ── Lifestyle mode (existing behaviour) ──────────────────────────────────────
+async function renderLifestyleBody(body) {
+  body.innerHTML = `<div class="spinner"></div>`;
+
+  const categories  = await getCategories();
+  const thisWeek    = getThisWeekRange();
+  const prevWeek    = getPrevWeekRange();
+  const monthStart  = getMonthStart();
+  const monthEnd    = getMonthEnd();
 
   const [thisWeekExp, prevWeekExp, monthExp] = await Promise.all([
     getExpensesByDateRangeForAnalytics(thisWeek.start, thisWeek.end),
@@ -34,6 +91,9 @@ export async function renderAnalytics(container) {
   const thisWeekTotal = await sumTotal(thisWeekExp);
   const prevWeekTotal = await sumTotal(prevWeekExp);
   const monthCatSum   = await sumByCategory(monthExp);
+
+  const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
+  const lifestyleByCat = aggregateByCategory(monthExp, catMap);
 
   // Daily totals for trend line (last 30 days) — analytics-filtered
   const trendEnd   = new Date();
@@ -51,21 +111,18 @@ export async function renderAnalytics(container) {
   const deltaText = delta === 0 ? '—'
     : `${deltaUp ? '▲' : '▼'} ${deltaPct !== null ? deltaPct + '%' : formatAmountShort(Math.abs(delta))}`;
 
-  // Max for week bars
-  const weekMax  = Math.max(thisWeekTotal, prevWeekTotal) || 1;
+  const weekMax = Math.max(thisWeekTotal, prevWeekTotal) || 1;
 
-  // Trend stats (handle all-zero edge case)
   const maxTrendValue = Math.max(...trendValues);
   const highestDayStat = maxTrendValue > 0
     ? trendStat('Highest Day', maxTrendValue, trendDates[trendValues.indexOf(maxTrendValue)])
     : trendStat('Highest Day', 0, null);
   const monthTotal = await sumTotal(monthExp);
-  const daysElapsedInMonth = new Date().getDate(); // 1 to 31
+  const daysElapsedInMonth = new Date().getDate();
   const avgPerDay = daysElapsedInMonth > 0 ? (monthTotal / daysElapsedInMonth) : 0;
 
-  page.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 16px">
-      <h1 style="font-size:22px;font-weight:800;letter-spacing:-0.5px">Analytics</h1>
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:flex-end;padding:0 0 10px">
       <span class="delta-badge ${deltaBadgeClass}">${deltaText} vs last week</span>
     </div>
 
@@ -90,7 +147,6 @@ export async function renderAnalytics(container) {
         <div class="week-compare-value" style="color:var(--text-secondary)">${formatAmountShort(prevWeekTotal)}</div>
       </div>
 
-      <!-- Day-by-day this week -->
       <div class="divider"></div>
       <div class="analytics-card-title" style="margin-top:4px">Daily Breakdown — This Week</div>
       <div id="this-week-days"></div>
@@ -109,14 +165,22 @@ export async function renderAnalytics(container) {
       </div>
     </div>
 
+    <!-- Monthly Category Donut -->
+    <div class="analytics-card">
+      <div class="analytics-card-title">🥧 This Month — Where It Went</div>
+      <div id="lifestyle-donut"></div>
+      <p class="analytics-note" style="margin:12px 0 0">Tap a slice or legend row to see the transactions behind it.</p>
+    </div>
+
     <!-- Monthly Category Breakdown -->
     <div class="analytics-card">
       <div class="analytics-card-title">🗂️ This Month — By Category</div>
       <div class="chart-container" id="cat-chart"></div>
     </div>
+
+    <p class="analytics-note">Lifestyle excludes rent, investments, savings and anything marked “exclude from analytics”.</p>
   `;
 
-  // Animate week bars
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const thisBar = document.getElementById('this-week-bar');
     const prevBar = document.getElementById('prev-week-bar');
@@ -124,10 +188,8 @@ export async function renderAnalytics(container) {
     if (prevBar) prevBar.style.width = ((prevWeekTotal / weekMax) * 100) + '%';
   }));
 
-  // Day-by-day this week (also analytics-filtered)
   await renderWeekDays(document.getElementById('this-week-days'), thisWeek);
 
-  // Trend line
   renderTrendLine(
     document.getElementById('trend-chart-container'),
     trendDates,
@@ -135,14 +197,373 @@ export async function renderAnalytics(container) {
     'var(--accent-light)'
   );
 
-  // Category chart
+  renderDonutChart(
+    document.getElementById('lifestyle-donut'),
+    topSlices(lifestyleByCat, 6),
+    {
+      centerValue: formatAmountShort(monthTotal),
+      centerLabel: 'Lifestyle',
+      percentBase: monthTotal || 1,
+      emptyText: 'No lifestyle spending this month',
+      onSliceClick: (slice) => openSliceDetail({
+        title: slice.label,
+        subtitle: `${monthLong(getTodayStr().slice(0, 7))} · ${(slice.items || []).length} entries`,
+        total: slice.value,
+        items: slice.items || [],
+        catMap,
+        emptyText: 'No transactions behind this slice.',
+      }),
+    }
+  );
+
   renderBarChart(document.getElementById('cat-chart'), categories, monthCatSum);
 }
 
+// ── Money Flow mode ──────────────────────────────────────────────────────────
+async function renderMoneyFlowBody(body) {
+  body.innerHTML = `<div class="spinner"></div>`;
+
+  const [categories, allExpenses, allIncomes, salaryOverrides, defaultSalary] = await Promise.all([
+    getCategories(),
+    getAllExpenses(),
+    getAllIncomes(),
+    getSetting('salaryByMonth', {}),
+    getSetting('defaultSalary', 0),
+  ]);
+
+  const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
+  const today = getTodayStr();
+  const currentMonth = today.slice(0, 7);
+
+  const actualExpenses = allExpenses.filter(e => e.date <= today);
+  const actualIncomes  = allIncomes.filter(i => i.date <= today);
+
+  // Months that have actual data, salary overrides, or the current month.
+  const monthSet = new Set([currentMonth]);
+  actualExpenses.forEach(e => monthSet.add(e.date.slice(0, 7)));
+  actualIncomes.forEach(i => monthSet.add(i.date.slice(0, 7)));
+  Object.keys(salaryOverrides || {}).forEach(m => { if (m <= currentMonth) monthSet.add(m); });
+  const months = [...monthSet].sort();
+
+  if (!moneyFlowMonth || !months.includes(moneyFlowMonth)) moneyFlowMonth = currentMonth;
+
+  const hasOverride = (m) => Object.prototype.hasOwnProperty.call(salaryOverrides || {}, m);
+  const salaryFor = (m) => hasOverride(m) ? (Number(salaryOverrides[m]) || 0) : (Number(defaultSalary) || 0);
+
+  const bucketOf = (e) => categoryBucket(catMap[e.categoryId]);
+  const isRent = (e) => /rent/i.test(catMap[e.categoryId]?.name || '');
+  const sum = (arr) => arr.reduce((total, e) => total + (Number(e.amount) || 0), 0);
+
+  const expenseMonths = groupByMonth(actualExpenses);
+  const incomeMonths  = groupByMonth(actualIncomes);
+
+  const monthExpenses = expenseMonths[moneyFlowMonth] || [];
+  const monthIncomes  = incomeMonths[moneyFlowMonth] || [];
+
+  const salary      = salaryFor(moneyFlowMonth);
+  const otherIncome = sum(monthIncomes);
+  const incomeTotal = salary + otherIncome;
+
+  const rentItems      = monthExpenses.filter(e => bucketOf(e) === 'expense' && isRent(e));
+  const investmentItems = monthExpenses.filter(e => bucketOf(e) === 'investment');
+  const savingsItems    = monthExpenses.filter(e => bucketOf(e) === 'savings');
+  const lifestyleItems  = monthExpenses.filter(e => bucketOf(e) === 'expense' && !isRent(e));
+
+  const rentTotal       = sum(rentItems);
+  const investmentTotal = sum(investmentItems);
+  const savingsTotal    = sum(savingsItems);
+  const lifestyleTotal  = sum(lifestyleItems);
+  const spentTotal      = rentTotal + lifestyleTotal;
+  const outflowTotal    = spentTotal + investmentTotal + savingsTotal;
+  const left            = incomeTotal - outflowTotal;
+  const overspent       = left < 0;
+
+  const pctOfIncome = (value) => incomeTotal > 0 ? (value / incomeTotal) * 100 : null;
+
+  // Donut segments. When income is known, "left" closes the ring.
+  const allocation = [
+    { label: 'Rent & utilities', value: rentTotal,       color: BUCKET_COLORS.rent,       items: rentItems },
+    { label: 'Lifestyle',        value: lifestyleTotal,  color: BUCKET_COLORS.lifestyle,  items: lifestyleItems },
+    { label: 'Investments',      value: investmentTotal, color: BUCKET_COLORS.investment, items: investmentItems },
+    { label: 'Savings',          value: savingsTotal,    color: BUCKET_COLORS.savings,    items: savingsItems },
+  ];
+  if (!overspent && incomeTotal > 0) {
+    allocation.push({ label: 'Left unspent', value: left, color: BUCKET_COLORS.left, items: [] });
+  }
+
+  const lifestyleByCat = aggregateByCategory(lifestyleItems, catMap);
+
+  // Last 6 months (ending at the selected month) for the trend bars.
+  const endIdx = months.indexOf(moneyFlowMonth);
+  const chartMonths = months.slice(Math.max(0, endIdx - 5), endIdx + 1);
+  const chartIncome = chartMonths.map(m => salaryFor(m) + sum(incomeMonths[m] || []));
+  const chartOutflow = chartMonths.map(m => {
+    const items = expenseMonths[m] || [];
+    return sum(items);
+  });
+  const chartInvested = chartMonths.map(m =>
+    sum((expenseMonths[m] || []).filter(e => bucketOf(e) === 'investment'))
+  );
+
+  body.innerHTML = `
+    <!-- Month selector -->
+    <div class="mf-month-bar">
+      <div>
+        <div class="mf-month-label">${monthLong(moneyFlowMonth)}</div>
+        <div class="mf-month-sub">${salary > 0 ? 'Salary + extra income' : 'No salary set for this month'}</div>
+      </div>
+      <select id="mf-month-select" class="form-input mf-month-select" aria-label="Select month">
+        ${[...months].reverse().map(m => `<option value="${m}" ${m === moneyFlowMonth ? 'selected' : ''}>${monthShort(m)}</option>`).join('')}
+      </select>
+    </div>
+
+    <!-- Income card -->
+    <div class="analytics-card mf-income-card">
+      <div class="mf-income-head">
+        <div>
+          <div class="mf-income-label">Income</div>
+          <div class="mf-income-value">${incomeTotal > 0 ? formatAmount(incomeTotal) : '—'}</div>
+          <div class="mf-income-breakdown">
+            Salary ${formatAmount(salary)}${otherIncome > 0 ? ` · Other ${formatAmount(otherIncome)}` : ''}
+          </div>
+        </div>
+        <div class="mf-income-actions">
+          <button class="filter-chip" id="mf-edit-salary" type="button">Edit salary</button>
+          <button class="filter-chip" id="mf-add-income" type="button">+ Income</button>
+        </div>
+      </div>
+      ${salary <= 0 ? `
+      <div class="mf-salary-prompt">
+        <span>Set this month's salary to see percentages and what's left.</span>
+        <button class="filter-chip active" id="mf-set-salary" type="button">Set salary</button>
+      </div>` : ''}
+    </div>
+
+    <!-- KPIs -->
+    <div class="mf-kpi-grid">
+      ${kpiCard('Spent', spentTotal, pctOfIncome(spentTotal), BUCKET_COLORS.lifestyle)}
+      ${kpiCard('Invested', investmentTotal, pctOfIncome(investmentTotal), BUCKET_COLORS.investment)}
+      ${kpiCard('Saved', savingsTotal, pctOfIncome(savingsTotal), BUCKET_COLORS.savings)}
+      ${kpiCard(overspent ? 'Overspent' : 'Left', Math.abs(left), pctOfIncome(Math.abs(left)), overspent ? BUCKET_COLORS.overspent : BUCKET_COLORS.left)}
+    </div>
+
+    <!-- Allocation donut -->
+    <div class="analytics-card">
+      <div class="analytics-card-title">🧭 Where the money went</div>
+      <div id="mf-allocation-donut"></div>
+      ${overspent ? `<p class="mf-warning">Outflow is ${formatAmount(Math.abs(left))} more than income this month.</p>` : ''}
+    </div>
+
+    <!-- Lifestyle donut -->
+    <div class="analytics-card">
+      <div class="analytics-card-title">🍔 Lifestyle breakdown</div>
+      <div id="mf-lifestyle-donut"></div>
+    </div>
+
+    <!-- 6-month graph -->
+    <div class="analytics-card">
+      <div class="analytics-card-title">📊 Last 6 months</div>
+      <div id="mf-trend-chart"></div>
+    </div>
+
+    <!-- Income entries -->
+    <div class="analytics-card">
+      <div class="analytics-card-title">➕ Other income this month</div>
+      ${monthIncomes.length ? `
+        <div class="mf-income-list">
+          ${monthIncomes.map(i => `
+            <div class="mf-income-row">
+              <div class="mf-income-row-main">
+                <div class="mf-income-row-source">${escapeHtml(i.source || 'Income')}</div>
+                <div class="mf-income-row-meta">${formatShortDate(i.date)}${i.note ? ` · ${escapeHtml(i.note)}` : ''}</div>
+              </div>
+              <div class="mf-income-row-amount">${formatAmount(i.amount)}</div>
+              <button class="btn-icon mf-income-delete" data-id="${i.id}" aria-label="Delete income entry" style="color:var(--danger)">×</button>
+            </div>
+          `).join('')}
+        </div>` : `<p class="analytics-note" style="margin:0">No extra income recorded this month.</p>`}
+    </div>
+
+    <p class="analytics-note">Money Flow includes rent, one-off purchases and investments. It is separate from the Lifestyle view.</p>
+  `;
+
+  // Donut 1 — allocation of income
+  renderDonutChart(document.getElementById('mf-allocation-donut'), allocation, {
+    centerValue: overspent || incomeTotal <= 0
+      ? formatAmountShort(outflowTotal)
+      : formatAmountShort(incomeTotal),
+    centerLabel: overspent || incomeTotal <= 0 ? 'Outflow' : 'Income',
+    percentBase: overspent || incomeTotal <= 0 ? outflowTotal : incomeTotal,
+    emptyText: 'No expenses this month',
+    onSliceClick: (slice) => {
+      const isLeft = slice.label === 'Left unspent';
+      openSliceDetail({
+        title: slice.label,
+        subtitle: isLeft
+          ? `${monthLong(moneyFlowMonth)} · income not spent`
+          : `${monthLong(moneyFlowMonth)} · ${(slice.items || []).length} entries`,
+        total: slice.value,
+        items: slice.items || [],
+        catMap,
+        emptyText: isLeft
+          ? 'This is the income left after rent, lifestyle, investments and savings.'
+          : `No ${slice.label.toLowerCase()} entries this month.`,
+      });
+    },
+  });
+
+  // Donut 2 — lifestyle by category (top 6 + everything else)
+  renderDonutChart(document.getElementById('mf-lifestyle-donut'), topSlices(lifestyleByCat, 6), {
+    centerValue: formatAmountShort(lifestyleTotal),
+    centerLabel: 'Lifestyle',
+    percentBase: lifestyleTotal || 1,
+    emptyText: 'No lifestyle spending this month',
+    onSliceClick: (slice) => openSliceDetail({
+      title: slice.label,
+      subtitle: `${monthLong(moneyFlowMonth)} · ${(slice.items || []).length} entries`,
+      total: slice.value,
+      items: slice.items || [],
+      catMap,
+      emptyText: 'No transactions behind this slice.',
+    }),
+  });
+
+  // 6-month grouped bars
+  renderGroupedBars(
+    document.getElementById('mf-trend-chart'),
+    chartMonths.map(m => ({ label: monthLetter(m) })),
+    [
+      { label: 'Income',   color: 'var(--accent-light)', values: chartIncome },
+      { label: 'Outflow',  color: BUCKET_COLORS.lifestyle, values: chartOutflow },
+      { label: 'Invested', color: BUCKET_COLORS.investment, values: chartInvested },
+    ]
+  );
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
+  document.getElementById('mf-month-select').addEventListener('change', (e) => {
+    moneyFlowMonth = e.target.value;
+    renderMoneyFlowBody(body);
+  });
+
+  const openSalary = () => openSalaryModal({
+    month: moneyFlowMonth,
+    value: salary,
+    hasOverride: hasOverride(moneyFlowMonth),
+    onSaved: () => renderMoneyFlowBody(body),
+  });
+
+  document.getElementById('mf-edit-salary').addEventListener('click', openSalary);
+  document.getElementById('mf-set-salary')?.addEventListener('click', openSalary);
+
+  document.getElementById('mf-add-income').addEventListener('click', () => {
+    openIncomeModal(() => renderMoneyFlowBody(body));
+  });
+
+  body.querySelectorAll('.mf-income-delete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ok = await showConfirm({
+        title: 'Delete income?',
+        message: 'This income entry will be removed from Money Flow.',
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        variant: 'danger',
+      });
+      if (!ok) return;
+      try {
+        await deleteIncome(parseInt(btn.dataset.id, 10));
+        showToast('Income deleted', 'success');
+        renderMoneyFlowBody(body);
+      } catch (err) {
+        showToast('Could not delete income', 'error');
+      }
+    });
+  });
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function groupByMonth(rows) {
+  const map = {};
+  for (const row of rows) {
+    const m = row.date.slice(0, 7);
+    (map[m] ||= []).push(row);
+  }
+  return map;
+}
+
+function aggregateByCategory(items, catMap) {
+  const map = {};
+  for (const e of items) {
+    const cat = catMap[e.categoryId] || { name: 'Other', emoji: '📦', color: BUCKET_COLORS.lifestyle };
+    const key = cat.id ?? cat.name;
+    if (!map[key]) {
+      map[key] = { label: cat.name, emoji: cat.emoji, color: cat.color, value: 0, catId: cat.id, items: [] };
+    }
+    map[key].value += Number(e.amount) || 0;
+    map[key].items.push(e);
+  }
+  return map;
+}
+
+function topSlices(map, limit) {
+  const all = Object.values(map).sort((a, b) => b.value - a.value);
+  if (all.length <= limit) return all;
+  const top = all.slice(0, limit);
+  const rest = all.slice(limit);
+  const restValue = rest.reduce((sum, s) => sum + s.value, 0);
+  if (restValue > 0) {
+    top.push({
+      label: 'Everything else',
+      color: BUCKET_COLORS.left,
+      value: restValue,
+      items: rest.flatMap(s => s.items || []),
+      aggregate: true,
+    });
+  }
+  return top;
+}
+
+function kpiCard(label, value, pct, color) {
+  return `
+    <div class="mf-kpi" style="--kpi-color:${color}">
+      <div class="mf-kpi-label">${label}</div>
+      <div class="mf-kpi-value">${formatAmountShort(value)}</div>
+      <div class="mf-kpi-pct">${pct === null ? '—' : pct.toFixed(0) + '% of income'}</div>
+    </div>`;
+}
+
+function monthLong(month) {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+}
+
+function monthShort(month) {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+}
+
+function monthLetter(month) {
+  const [, m] = month.split('-').map(Number);
+  return new Date(2000, m - 1, 1).toLocaleDateString('en-IN', { month: 'short' });
+}
+
+function formatShortDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 async function renderWeekDays(container, weekRange) {
-  const days    = dateRange(weekRange.start, weekRange.end);
+  const days     = dateRange(weekRange.start, weekRange.end);
   const dailyMap = await getDailyTotalsForAnalytics(weekRange.start, weekRange.end);
-  const dayMax  = Math.max(...days.map(d => dailyMap[d] || 0)) || 1;
+  const dayMax   = Math.max(...days.map(d => dailyMap[d] || 0)) || 1;
 
   container.innerHTML = days.map(d => {
     const total = dailyMap[d] || 0;

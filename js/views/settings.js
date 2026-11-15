@@ -5,7 +5,7 @@ import { APP_VERSION } from '../config.js';
 import {
   getCategories, addCategory, updateCategory, deleteCategory, reorderCategories,
   getAllExpenses, db,
-  getSetting, setSetting,
+  getSetting, setSetting, categoryBucket,
 } from '../db.js';
 import { getExpensesByDateRange } from '../db.js';
 import { toDateStr, getMonthStart, getMonthEnd, formatAmount } from '../utils/date-utils.js';
@@ -31,9 +31,10 @@ export async function renderSettings(container) {
 }
 
 async function buildSettings(page) {
-  const [categories, budget, autoBackup, backups] = await Promise.all([
+  const [categories, budget, defaultSalary, autoBackup, backups] = await Promise.all([
     getCategories(),
     getSetting('budget', 0),
+    getSetting('defaultSalary', 0),
     getAutoBackupConfig(),
     getBackupList(),
   ]);
@@ -72,6 +73,41 @@ async function buildSettings(page) {
           <div class="settings-item-icon" style="background:rgba(16,185,129,0.15)">✅</div>
           <div class="settings-item-info">
             <div class="settings-item-title">Save Budget</div>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Money Flow -->
+    <div class="settings-section">
+      <div class="settings-section-title">Money Flow</div>
+      <div class="settings-list">
+        <div class="settings-item" style="cursor:default;">
+          <div class="settings-item-icon" style="background:rgba(16,185,129,0.15)">💵</div>
+          <div class="settings-item-info">
+            <div class="settings-item-title">Default Monthly Salary</div>
+            <div class="settings-item-sub">Used for months without an override</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="color:var(--text-muted)">₹</span>
+            <input
+              type="number"
+              id="salary-input"
+              class="form-input"
+              style="width:100px;text-align:right;padding:6px 8px;font-weight:700;font-size:15px"
+              value="${defaultSalary || ''}"
+              placeholder="0"
+              min="0"
+              step="100"
+              aria-label="Default monthly salary in rupees"
+            />
+          </div>
+        </div>
+        <button class="settings-item" id="save-salary-btn" style="width:100%;cursor:pointer;">
+          <div class="settings-item-icon" style="background:rgba(16,185,129,0.15)">✅</div>
+          <div class="settings-item-info">
+            <div class="settings-item-title">Save Salary</div>
+            <div class="settings-item-sub">Override individual months in Analytics → Money Flow</div>
           </div>
         </button>
       </div>
@@ -227,6 +263,13 @@ async function buildSettings(page) {
     showToast(val > 0 ? `Budget set to ${formatAmount(val)}` : 'Budget cleared', 'success');
   });
 
+  // Default salary save
+  document.getElementById('save-salary-btn').addEventListener('click', async () => {
+    const val = parseFloat(document.getElementById('salary-input').value) || 0;
+    await setSetting('defaultSalary', val);
+    showToast(val > 0 ? `Default salary set to ${formatAmount(val)}` : 'Default salary cleared', 'success');
+  });
+
   // Add category
   document.getElementById('add-cat-btn').addEventListener('click', () => {
     openCategoryModal(null, async () => {
@@ -354,9 +397,12 @@ async function buildSettings(page) {
 
   // Clear all data
   document.getElementById('clear-data-btn').addEventListener('click', async () => {
-    if (!confirm('Delete ALL expenses? This cannot be undone.')) return;
-    await db.expenses.clear();
-    showToast('All expenses deleted', 'success');
+    if (!confirm('Delete ALL expenses and income entries? This cannot be undone.')) return;
+    await db.transaction('rw', db.expenses, db.incomes, async () => {
+      await db.expenses.clear();
+      await db.incomes.clear();
+    });
+    showToast('All expenses and income deleted', 'success');
   });
 }
 
@@ -437,7 +483,10 @@ function renderCategoryList(container, categories, page) {
         </svg>
       </div>
       <div class="category-manage-item-icon" style="background:${hexAlpha(cat.color,0.18)}">${cat.emoji}</div>
-      <div class="category-manage-item-name">${cat.name}</div>
+      <div class="category-manage-item-name">
+        ${cat.name}
+        ${categoryBucket(cat) !== 'expense' ? `<span class="bucket-badge bucket-${categoryBucket(cat)}">${categoryBucket(cat) === 'investment' ? 'Invest' : 'Saved'}</span>` : ''}
+      </div>
       <div class="category-manage-item-actions">
         <button class="btn-icon edit-cat-btn" data-id="${cat.id}" aria-label="Edit ${cat.name}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -701,6 +750,13 @@ function openCategoryModal(existing, onDone) {
 
   let selectedEmoji = existing?.emoji ?? '📦';
   let selectedColor = existing?.color ?? COLOR_OPTIONS[0];
+  let selectedBucket = categoryBucket(existing) || 'expense';
+
+  const BUCKETS = [
+    { id: 'expense',    label: 'Expense',    hint: 'Lifestyle spending' },
+    { id: 'investment', label: 'Investment', hint: 'Money invested' },
+    { id: 'savings',    label: 'Savings',    hint: 'Money set aside' },
+  ];
 
   const sheet = document.createElement('div');
   sheet.className = 'bottom-sheet';
@@ -741,6 +797,19 @@ function openCategoryModal(existing, onDone) {
                   aria-label="Select color" aria-pressed="${c===selectedColor}"></button>
         `).join('')
       }</div>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label">Type</label>
+      <div id="bucket-selector" style="display:flex;gap:8px;">
+        ${BUCKETS.map(b => `
+          <button type="button" class="bucket-option ${b.id === selectedBucket ? 'active' : ''}"
+                  data-bucket="${b.id}" aria-pressed="${b.id === selectedBucket}">
+            <span class="bucket-option-label">${b.label}</span>
+            <span class="bucket-option-hint">${b.hint}</span>
+          </button>
+        `).join('')}
+      </div>
     </div>
 
     <div style="display:flex;gap:12px;margin-top:8px">
@@ -790,6 +859,19 @@ function openCategoryModal(existing, onDone) {
     });
   });
 
+  // Bucket selection
+  sheet.querySelectorAll('.bucket-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      sheet.querySelectorAll('.bucket-option').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-pressed', 'false');
+      });
+      btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
+      selectedBucket = btn.dataset.bucket;
+    });
+  });
+
   // Save
   document.getElementById('cat-save-btn').addEventListener('click', async () => {
     const name = document.getElementById('cat-name-input').value.trim();
@@ -797,10 +879,10 @@ function openCategoryModal(existing, onDone) {
 
     try {
       if (isEdit) {
-        await updateCategory(existing.id, { name, emoji: selectedEmoji, color: selectedColor });
+        await updateCategory(existing.id, { name, emoji: selectedEmoji, color: selectedColor, bucket: selectedBucket });
         showToast(`"${name}" updated`, 'success');
       } else {
-        await addCategory({ name, emoji: selectedEmoji, color: selectedColor });
+        await addCategory({ name, emoji: selectedEmoji, color: selectedColor, bucket: selectedBucket });
         showToast(`"${name}" added`, 'success');
       }
       closeCatModal();

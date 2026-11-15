@@ -32,10 +32,11 @@ function requestPersistentStorage() {
 }
 
 async function buildBackupPayload() {
-  const [expenses, categories, settings] = await Promise.all([
+  const [expenses, categories, settings, incomes] = await Promise.all([
     db.expenses.toArray(),
     db.categories.toArray(),
     db.settings.toArray(),
+    db.incomes.toArray(),
   ]);
 
   return {
@@ -44,6 +45,7 @@ async function buildBackupPayload() {
     expenses,
     categories,
     settings: settings.filter(s => !BACKUP_SETTING_KEYS.has(s.key)),
+    incomes,
   };
 }
 
@@ -58,7 +60,8 @@ async function hasDataChangedSinceLastBackup() {
   return (
     normalize(current.expenses) !== normalize(latest.payload.expenses) ||
     normalize(current.categories) !== normalize(latest.payload.categories) ||
-    normalize(current.settings) !== normalize(latest.payload.settings)
+    normalize(current.settings) !== normalize(latest.payload.settings) ||
+    normalize(current.incomes) !== normalize(latest.payload.incomes)
   );
 }
 

@@ -159,3 +159,159 @@ function getAxisLabelIndices(n) {
   if (n <= 3) return Array.from({ length: n }, (_, i) => i);
   return [0, Math.floor((n - 1) / 2), n - 1];
 }
+
+// ── Donut chart ───────────────────────────────────────────────────────────────
+/**
+ * Render an SVG donut chart with a legend.
+ * @param {HTMLElement} container
+ * @param {Array<{label:string,value:number,color:string}>} segments
+ * @param {object} opts
+ *   centerValue  — big text in the middle
+ *   centerLabel  — small text under it
+ *   percentBase  — denominator for legend percentages (defaults to the segment total)
+ *   emptyText    — message when there is no data
+ */
+export function renderDonutChart(container, segments, opts = {}) {
+  container.innerHTML = '';
+
+  const data = (segments || [])
+    .map(s => ({ ...s, value: Number(s.value) || 0 }))
+    .filter(s => s.value > 0);
+
+  const total = data.reduce((sum, s) => sum + s.value, 0);
+  if (!total) {
+    container.innerHTML = `<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px 0">${opts.emptyText || 'No data for this month'}</p>`;
+    return;
+  }
+
+  const size   = opts.size || 190;
+  const stroke = opts.stroke || 26;
+  const r      = (size - stroke) / 2;
+  const circ   = 2 * Math.PI * r;
+  const gap    = data.length > 1 ? 2 : 0;
+  const pctBase = opts.percentBase && opts.percentBase > 0 ? opts.percentBase : total;
+
+  let offset = 0;
+  const interactive = typeof opts.onSliceClick === 'function';
+
+  const arcs = data.map((s, i) => {
+    const len  = (s.value / total) * circ;
+    const dash = Math.max(0.5, len - gap);
+    const pct  = ((s.value / pctBase) * 100).toFixed(0);
+    const label = `${s.label}: ${formatAmountShort(s.value)} (${pct}%)`;
+    const a11y = interactive
+      ? ` tabindex="0" role="button" aria-label="${escapeHtml(label)}. Show details"`
+      : '';
+    const arc = `<circle class="donut-slice${interactive ? ' interactive' : ''}" data-slice-index="${i}"${a11y}
+      cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none"
+      stroke="${s.color}" stroke-width="${stroke}"
+      stroke-dasharray="${dash} ${Math.max(0, circ - dash)}"
+      stroke-dashoffset="${-offset}"
+      transform="rotate(-90 ${size / 2} ${size / 2})">
+      <title>${escapeHtml(s.label)}: ${formatAmountShort(s.value)}</title>
+    </circle>`;
+    offset += len;
+    return arc;
+  }).join('');
+
+  const legend = data.map((s, i) => {
+    const pct = ((s.value / pctBase) * 100).toFixed(0);
+    const a11y = interactive
+      ? ` tabindex="0" role="button" aria-label="${escapeHtml(s.label)}: ${formatAmountShort(s.value)} (${pct}%). Show details"`
+      : '';
+    return `
+    <div class="donut-legend-row${interactive ? ' interactive' : ''}" data-slice-index="${i}"${a11y}>
+      <span class="donut-legend-dot" style="background:${s.color}"></span>
+      <span class="donut-legend-label">${escapeHtml(s.label)}</span>
+      <span class="donut-legend-value">${formatAmountShort(s.value)}</span>
+      <span class="donut-legend-pct">${pct}%</span>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="donut-layout">
+      <div class="donut-wrap" style="width:${size}px;height:${size}px">
+        <svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" aria-label="Donut chart">
+          <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none"
+                  stroke="var(--bg-glass)" stroke-width="${stroke}" />
+          ${arcs}
+        </svg>
+        <div class="donut-center">
+          <span class="donut-center-value">${opts.centerValue ?? formatAmountShort(total)}</span>
+          ${opts.centerLabel ? `<span class="donut-center-label">${escapeHtml(opts.centerLabel)}</span>` : ''}
+        </div>
+      </div>
+      <div class="donut-legend">${legend}</div>
+    </div>
+  `;
+
+  if (interactive) {
+    const trigger = (index) => {
+      const segment = data[index];
+      if (segment) opts.onSliceClick(segment, index);
+    };
+    container.querySelectorAll('[data-slice-index]').forEach(el => {
+      el.addEventListener('click', () => trigger(Number(el.dataset.sliceIndex)));
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+          e.preventDefault();
+          trigger(Number(el.dataset.sliceIndex));
+        }
+      });
+    });
+  }
+}
+
+// ── Grouped bar chart ─────────────────────────────────────────────────────────
+/**
+ * Render vertical grouped bars (e.g. income vs spending vs invested by month).
+ * @param {HTMLElement} container
+ * @param {Array<{label:string,sub?:string}>} groups
+ * @param {Array<{label:string,color:string,values:number[]}>} series
+ */
+export function renderGroupedBars(container, groups, series) {
+  container.innerHTML = '';
+
+  const allValues = series.flatMap(s => s.values || []);
+  const max = Math.max(...allValues, 0);
+  if (!groups.length || max <= 0) {
+    container.innerHTML = `<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px 0">Not enough data yet</p>`;
+    return;
+  }
+
+  const legend = series.map(s => `
+    <span class="grouped-bars-legend-item">
+      <span class="donut-legend-dot" style="background:${s.color}"></span>${escapeHtml(s.label)}
+    </span>
+  `).join('');
+
+  const plot = groups.map((g, i) => {
+    const columns = series.map(s => {
+      const value = Number(s.values?.[i]) || 0;
+      const height = Math.max(0, (value / max) * 100);
+      return `<div class="grouped-bar" style="height:${height}%;background:${s.color}"
+                   title="${escapeHtml(s.label)}: ${formatAmountShort(value)}"></div>`;
+    }).join('');
+    return `
+      <div class="grouped-bar-group">
+        <div class="grouped-bar-columns">${columns}</div>
+        <div class="grouped-bar-label">${escapeHtml(g.label)}</div>
+        ${g.sub ? `<div class="grouped-bar-sub">${escapeHtml(g.sub)}</div>` : ''}
+      </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="grouped-bars-legend">${legend}</div>
+    <div class="grouped-bars-plot">${plot}</div>
+  `;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+

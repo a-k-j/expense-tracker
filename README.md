@@ -13,9 +13,15 @@ SpendSense is a modern, privacy-first Progressive Web Application (PWA) designed
 - **⚡ Quick Add & Preset Amounts**: Log expenses in seconds with quick-preset buttons or the full-detail bottom sheet.
 - **🎯 Monthly Budget & Smart Alerts**: Set a target monthly budget and receive automated progress bar updates and threshold notifications (50%, 75%, 90%, 100%). Expenses marked *Exclude from Analytics* don't count towards budget progress or alerts.
 - **📊 Analytics & Visual Insights**:
+  - **Lifestyle vs Money Flow**: Toggle between a rent-free lifestyle spending view and a full money-flow view of salary, investments, savings and what's left.
   - **Week-over-Week Comparison**: Track spending changes compared to the previous week.
   - **Daily Breakdown**: See day-by-day spending for the current week.
   - **30-Day Trend Line**: Interactive trend chart with stats (Highest Day, Daily Average, Monthly Total).
+  - **Donut & Bar Charts**: Allocation donuts for income, plus a 6-month income vs outflow vs invested bar graph.
+- **💰 Salary & Income Tracking**:
+  - Set a default monthly take-home salary, with per-month overrides (e.g. a different amount for August).
+  - Log extra income (from parents, bonuses, refunds, gifts) as first-class entries.
+  - Mark categories as **Expense**, **Investment** or **Savings**, so SIPs count as invested without inflating lifestyle spending.
 - **📅 Custom Dark Calendar Date Picker**: Popover date selection with past/future date support and smart date defaulting.
 - **🏷️ Customizable Categories**: Add, edit, delete, and reorder categories with custom emoji and color palettes.
 - **🔍 History & Advanced Filtering**: Filter past expenses by custom date ranges and category chips.
@@ -91,13 +97,25 @@ SpendSense can be installed on your phone or computer for a full-screen, app-lik
 
 ### 4. Analytics & Trends
 - Navigate to the **Analytics** tab (`#/analytics`).
-- **Week-over-Week**: View a comparison of this week's total versus last week's total with delta percentages.
-- **30-Day Spending Trend**: Track daily spending peaks and averages.
+- Use the **Lifestyle / Money Flow** toggle at the top.
+- **Lifestyle** excludes rent, investments, savings and anything marked *Exclude from Analytics*. It shows:
+  - **Week-over-Week**: A comparison of this week's total versus last week's total with delta percentages.
+  - **30-Day Spending Trend**: Daily spending peaks and averages.
+  - **This Month — Where It Went**: A donut of the month's lifestyle spending by category. Tap any slice or legend row to see the transactions behind it.
+- **Money Flow** shows the whole month:
+  - **Income** = the month's salary (default or per-month override) plus any extra income entries.
+  - **KPI cards** for Spent, Invested, Saved and Left (or Overspent), with percentages of income.
+  - **Where the money went** donut: rent & utilities, lifestyle, investments, savings and left unspent.
+  - **Lifestyle breakdown** donut by category.
+  - **Tap any slice or legend row** in either donut to see the transactions behind it.
+  - **Last 6 months** bar graph comparing income, outflow and investments.
+  - **Edit salary** for the selected month, or **+ Income** to add money from parents, a bonus, refund or gift.
 
 ### 5. Settings & Data Management
 - Navigate to the **Settings** tab (`#/settings`).
 - **Monthly Budget**: Enter your monthly limit in rupees (₹) and tap **Save Budget**.
-- **Categories Manager**: Add custom categories with chosen emojis & HSL color codes, or drag/reorder existing ones.
+- **Default Monthly Salary**: Set the take-home salary used for months without an override, then fine-tune individual months inside Money Flow.
+- **Categories Manager**: Add custom categories with chosen emojis & HSL color codes, set their **Type** (Expense / Investment / Savings), or drag/reorder existing ones.
 - **CSV Export**: Select a date range and download your expenses as a UTF-8 CSV file.
 - **JSON Data Backup**: Create a full backup (`spendsense_backup_YYYY-MM-DD.json`).
 - **JSON Data Restore**: Restore or merge backup files back into the browser storage.
@@ -117,11 +135,15 @@ SpendSense can be installed on your phone or computer for a full-screen, app-lik
 ### Database Schema (IndexedDB / `SpendSenseDB`)
 
 ```javascript
-// Database name: SpendSenseDB (Version 1)
+// Database name: SpendSenseDB (Version 3)
 expenses:   '++id, date, categoryId, amount, createdAt, [date+categoryId]'
-categories: '++id, name, order'
-settings:   'key'
+categories: '++id, name, order'          // includes bucket: expense | investment | savings
+settings:   'key'                        // budget, defaultSalary, salaryByMonth, ...
+backups:    '++id, createdAt, type'
+incomes:    '++id, date, createdAt'      // extra income: parents, bonus, refund, gift
 ```
+
+`salaryByMonth` stores per-month overrides as `{ "2026-08": 45000 }`; months without an entry fall back to `defaultSalary`.
 
 ---
 
@@ -133,14 +155,15 @@ expense-tracker/
 │   └── index.css             # Main stylesheet & CSS design system
 ├── js/
 │   ├── app.js                # App entry point, Router, & Navigation setup
-│   ├── config.js             # App constants & versioning (v1.12.0)
+│   ├── config.js             # App constants & versioning (v1.20.0)
 │   ├── db.js                 # Dexie.js setup, schema definitions & CRUD helpers
 │   ├── components/
 │   │   ├── category-grid.js  # Category selection grid
-│   │   ├── chart.js          # Bar charts & SVG trend lines
+│   │   ├── chart.js          # Bar charts, SVG trend lines, donuts & grouped bars
 │   │   ├── date-picker.js    # Custom dark popover calendar
 │   │   ├── expense-form.js   # Add/Edit expense bottom sheet modal
 │   │   ├── expense-list.js   # Render expense lists with edit/delete actions
+│   │   ├── income-form.js    # Add income & per-month salary bottom sheets
 │   │   └── toast.js          # Feedback toast notification system
 │   ├── utils/
 │   │   ├── auto-backup.js    # On-device snapshots, retention & restore logic
@@ -148,10 +171,10 @@ expense-tracker/
 │   │   ├── date-utils.js    # Date formatting & calculation utilities
 │   │   └── json-backup.js   # Complete JSON export & import restore helpers
 │   └── views/
-│       ├── analytics.js      # Week-over-week & 30-day analytics view
+│       ├── analytics.js      # Lifestyle analytics + Money Flow (salary/income/investments)
 │       ├── dashboard.js      # Main home dashboard view
 │       ├── history.js        # History log view with date & category filters
-│       └── settings.js       # Budget, category manager, export & backup view
+│       └── settings.js       # Budget, salary, category manager, export & backup view
 ├── icons/                    # App icons for PWA manifest & iOS
 ├── index.html                # Single Page Application HTML entry point
 ├── manifest.json             # Web App Manifest for PWA installation

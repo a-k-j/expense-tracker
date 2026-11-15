@@ -4,10 +4,11 @@ import { db, seedIfEmpty } from '../db.js';
 import { downloadText } from './csv-export.js';
 
 export async function exportJSON() {
-  const [expenses, categories, settings] = await Promise.all([
+  const [expenses, categories, settings, incomes] = await Promise.all([
     db.expenses.toArray(),
     db.categories.toArray(),
     db.settings.toArray(),
+    db.incomes.toArray(),
   ]);
 
   const payload = {
@@ -16,6 +17,7 @@ export async function exportJSON() {
     expenses,
     categories,
     settings,
+    incomes,
   };
 
   const json = JSON.stringify(payload, null, 2);
@@ -25,7 +27,7 @@ export async function exportJSON() {
 
 /**
  * Restore from an already-parsed backup payload.
- * @param {object} data - Backup payload with version, expenses, categories and settings
+ * @param {object} data - Backup payload with version, expenses, categories, settings and (optionally) incomes
  * @param {boolean} merge - true = merge, false = replace all
  */
 export async function restoreFromPayload(data, merge = false) {
@@ -33,17 +35,20 @@ export async function restoreFromPayload(data, merge = false) {
     throw new Error('Invalid backup file format.');
   }
 
+  const incomes = Array.isArray(data.incomes) ? data.incomes : [];
+
   if (!merge) {
     // Clear existing data
-    await db.transaction('rw', db.expenses, db.categories, db.settings, async () => {
+    await db.transaction('rw', db.expenses, db.categories, db.settings, db.incomes, async () => {
       await db.expenses.clear();
       await db.categories.clear();
       await db.settings.clear();
+      await db.incomes.clear();
     });
   }
 
   // Re-import
-  await db.transaction('rw', db.expenses, db.categories, db.settings, async () => {
+  await db.transaction('rw', db.expenses, db.categories, db.settings, db.incomes, async () => {
     if (!merge) {
       await db.categories.bulkAdd(data.categories);
       await db.expenses.bulkAdd(data.expenses);
@@ -54,9 +59,16 @@ export async function restoreFromPayload(data, merge = false) {
     if (data.settings) {
       await db.settings.bulkPut(data.settings);
     }
+    if (incomes.length) {
+      if (merge) await db.incomes.bulkPut(incomes);
+      else await db.incomes.bulkAdd(incomes);
+    }
   });
 
-  return { expenses: data.expenses.length, categories: data.categories.length };
+  // Older backups have no buckets / salary settings / seeded categories.
+  await seedIfEmpty();
+
+  return { expenses: data.expenses.length, categories: data.categories.length, incomes: incomes.length };
 }
 
 /**

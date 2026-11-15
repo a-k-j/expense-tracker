@@ -4,7 +4,7 @@ import { APP_VERSION } from '../config.js';
 
 import {
   getTodayExpenses, getMonthExpenses, getCategories, sumByCategory, sumTotal,
-  getSetting, setSetting,
+  getSetting, setSetting, categoryBucket,
 } from '../db.js';
 import { formatAmount, formatAmountShort, monthLabel, getSmartDefaultDate, saveLastUsedDate } from '../utils/date-utils.js';
 import { renderExpenseList } from '../components/expense-list.js';
@@ -29,12 +29,14 @@ export async function renderDashboard(container) {
   const catMap     = Object.fromEntries(categories.map(c => [c.id, c]));
   const todayTotal = await sumTotal(todayExpenses);
   const monthTotal = await sumTotal(monthExpenses);
-  const monthCatSum = await sumByCategory(monthExpenses);
 
-  // Compute analytics-included totals (excludes expenses marked excludeFromAnalytics)
-  const includedMonthExpenses = monthExpenses.filter(e => !e.excludeFromAnalytics);
+  // Compute analytics-included totals (exclude flagged rows and non-expense buckets)
+  const bucketById = Object.fromEntries(categories.map(c => [c.id, categoryBucket(c)]));
+  const isLifestyle = (e) => !e.excludeFromAnalytics && (bucketById[e.categoryId] || 'expense') === 'expense';
+  const includedMonthExpenses = monthExpenses.filter(isLifestyle);
   const includedMonthTotal = await sumTotal(includedMonthExpenses);
-  const includedTodayTotal = await sumTotal(todayExpenses.filter(e => !e.excludeFromAnalytics));
+  const includedTodayTotal = await sumTotal(todayExpenses.filter(isLifestyle));
+  const monthCatSum = await sumByCategory(includedMonthExpenses);
   const hasExcluded = includedMonthTotal !== monthTotal;
 
   // Check budget alerts against analytics-included spending only
