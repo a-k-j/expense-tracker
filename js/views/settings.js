@@ -536,10 +536,7 @@ function renderCategoryList(container, categories, page) {
         </svg>
       </div>
       <div class="category-manage-item-icon" style="background:${hexAlpha(cat.color,0.18)}">${cat.emoji}</div>
-      <div class="category-manage-item-name">
-        ${cat.name}
-        ${categoryBucket(cat) !== 'expense' ? `<span class="bucket-badge bucket-${categoryBucket(cat)}">${categoryBucket(cat) === 'investment' ? 'Invest' : 'Saved'}</span>` : ''}
-      </div>
+      <div class="category-manage-item-name">${cat.name}</div>
       <div class="category-manage-item-actions">
         <button class="btn-icon edit-cat-btn" data-id="${cat.id}" aria-label="Edit ${cat.name}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

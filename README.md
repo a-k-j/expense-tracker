@@ -20,7 +20,7 @@ SpendSense is a modern, privacy-first Progressive Web Application (PWA) designed
   - **Donut & Bar Charts**: A month-by-month lifestyle donut, allocation donut for inflow, plus a 6-month inflow vs outflow vs invested bar graph.
 - **💰 Salary & Income Tracking**:
   - Set a default monthly take-home salary, with per-month overrides (e.g. a different amount for August).
-  - Log extra income (from parents, bonuses, refunds, gifts) as first-class entries.
+  - Log extra income (from parents, bonuses, refunds, gifts) as first-class entries, then edit or delete any entry from Money Flow.
   - Mark categories as **Expense**, **Investment** or **Savings**, so SIPs count as invested without inflating lifestyle spending. The *Exclude from Analytics* toggle is hidden for investment and savings entries because they never count as lifestyle spending.
   - **Optional leftover carry-over**: Roll each month's unspent money into the next month, with a sub-toggle to decide whether overspending (negative leftover) should carry forward too.
 - **📅 Custom Dark Calendar Date Picker**: Popover date selection with past/future date support and smart date defaulting.
@@ -30,39 +30,6 @@ SpendSense is a modern, privacy-first Progressive Web Application (PWA) designed
   - **CSV Export**: Export transactions for custom date ranges for analysis in Excel or Google Sheets.
   - **JSON Backup & Restore**: Backup your entire dataset to a JSON file and restore/merge anytime.
   - **On-Device Auto Backup**: Automatic daily snapshots with configurable retention and manual snapshots, all stored locally.
-
----
-
-## 🚀 Quick Start / How to Run Locally
-
-SpendSense is built using vanilla web technologies (HTML5, ES Modules, CSS3) and requires **no build step** or `npm install`.
-
-### Prerequisites
-Any static web server or browser with ES Module support.
-
-### Running the App
-
-#### Option 1: Using `npx serve` (Recommended)
-```bash
-# Navigate to the project directory
-cd expense-tracker
-
-# Start a static local server
-npx serve .
-```
-Open `http://localhost:3000` in your browser.
-
-#### Option 2: Using Python
-```bash
-# Python 3
-python -m http.server 8000
-```
-Open `http://localhost:8000` in your browser.
-
-#### Option 3: VS Code Live Server Extension
-Right-click on `index.html` in VS Code and select **"Open with Live Server"**.
-
-> 💡 **Note**: Service Workers and PWA capabilities require running over `localhost` or an `https://` protocol. Opening `index.html` directly via `file://` may disable offline caching and PWA installation.
 
 ---
 
@@ -105,7 +72,7 @@ SpendSense can be installed on your phone or computer for a full-screen, app-lik
   - **Where It Went**: A donut of lifestyle spending by category for the month you pick. Use the month selector to look back at any month, then tap a slice or legend row to see the transactions behind it, or press and hold a slice to preview its category and amount.
 - **Money Flow** shows the whole month:
   - **Total Inflow** = the month's salary (default or per-month override) plus any extra income entries.
-  - **KPI cards** for Spent and Left (or Overspent), with percentages of available money.
+  - **KPI cards** for Spent, Invested, Saved and Left (or Overspent), with percentages of available money.
   - **Optional carry-over** adds the previous month's leftover to this month's available money. If negative carry-over is turned off, overspending resets the carried amount to zero instead of reducing next month.
   - **Where the money went** donut: rent & utilities, lifestyle, investments, savings and left unspent.
   - **Tap any slice or legend row** to see the transactions behind it, or **press and hold** a slice for a quick category + amount preview.
@@ -158,7 +125,7 @@ expense-tracker/
 │   └── index.css             # Main stylesheet & CSS design system
 ├── js/
 │   ├── app.js                # App entry point, Router, & Navigation setup
-│   ├── config.js             # App constants & versioning (v1.23.0)
+│   ├── config.js             # App constants & versioning (v1.24.0)
 │   ├── db.js                 # Dexie.js setup, schema definitions & CRUD helpers
 │   ├── components/
 │   │   ├── category-grid.js  # Category selection grid

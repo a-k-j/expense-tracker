@@ -231,6 +231,16 @@ async function addIncome({ amount, source = '', note = '', date }) {
   });
 }
 
+async function updateIncome(id, { amount, source = '', note = '', date }) {
+  const d = date ? new Date(date) : new Date();
+  return db.incomes.update(id, {
+    amount: parseFloat(amount),
+    source: (source || '').trim(),
+    note: (note || '').trim(),
+    date: toDateStr(d),
+  });
+}
+
 async function deleteIncome(id) {
   return db.incomes.delete(id);
 }
@@ -315,7 +325,7 @@ export {
   getSalaryForMonth, setSalaryForMonth,
   getCategories, getCategoryById, addCategory, updateCategory, deleteCategory, reorderCategories,
   addExpense, updateExpense, deleteExpense, getExpenseById,
-  addIncome, deleteIncome, getAllIncomes, getIncomesByDateRange,
+  addIncome, updateIncome, deleteIncome, getAllIncomes, getIncomesByDateRange,
   getExpensesByDateRange, getTodayExpenses, getMonthExpenses, getAllExpenses,
   getExpensesByDateRangeForAnalytics, getDailyTotalsForAnalytics, getMonthExpensesForAnalytics,
   sumByCategory, sumTotal, getDailyTotals,

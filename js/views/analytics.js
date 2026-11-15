@@ -191,7 +191,7 @@ async function renderLifestyleBody(body) {
       <div class="mf-month-bar" style="margin-bottom:12px">
         <div>
           <div class="analytics-card-title" style="margin:0">🥧 Where It Went</div>
-          <div class="mf-month-sub">${monthLong(lifestyleMonth)} · lifestyle only</div>
+          <div class="mf-month-sub">${monthLong(lifestyleMonth)}</div>
         </div>
         <select id="lf-month-select" class="form-input mf-month-select" aria-label="Select lifestyle month">
           ${[...months].reverse().map(m => `<option value="${m}" ${m === lifestyleMonth ? 'selected' : ''}>${monthShort(m)}</option>`).join('')}
@@ -395,6 +395,8 @@ async function renderMoneyFlowBody(body) {
     <!-- KPIs -->
     <div class="mf-kpi-grid">
       ${kpiCard('Spent', spentTotal, pctOfIncome(spentTotal), BUCKET_COLORS.lifestyle)}
+      ${kpiCard('Invested', investmentTotal, pctOfIncome(investmentTotal), BUCKET_COLORS.investment)}
+      ${kpiCard('Saved', savingsTotal, pctOfIncome(savingsTotal), BUCKET_COLORS.savings)}
       ${kpiCard(overspent ? 'Overspent' : 'Left', Math.abs(left), pctOfIncome(Math.abs(left)), overspent ? BUCKET_COLORS.overspent : BUCKET_COLORS.left)}
     </div>
 
@@ -423,6 +425,12 @@ async function renderMoneyFlowBody(body) {
                 <div class="mf-income-row-meta">${formatShortDate(i.date)}${i.note ? ` · ${escapeHtml(i.note)}` : ''}</div>
               </div>
               <div class="mf-income-row-amount">${formatAmount(i.amount)}</div>
+              <button class="btn-icon mf-income-edit" data-id="${i.id}" aria-label="Edit income entry">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
               <button class="btn-icon mf-income-delete" data-id="${i.id}" aria-label="Delete income entry" style="color:var(--danger)">×</button>
             </div>
           `).join('')}
@@ -486,6 +494,15 @@ async function renderMoneyFlowBody(body) {
 
   document.getElementById('mf-add-income').addEventListener('click', () => {
     openIncomeModal(() => renderMoneyFlowBody(body));
+  });
+
+  body.querySelectorAll('.mf-income-edit').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = parseInt(btn.dataset.id, 10);
+      const entry = monthIncomes.find(i => i.id === id);
+      if (!entry) return;
+      openIncomeModal(() => renderMoneyFlowBody(body), entry);
+    });
   });
 
   body.querySelectorAll('.mf-income-delete').forEach(btn => {

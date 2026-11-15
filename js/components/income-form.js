@@ -1,6 +1,6 @@
 // js/components/income-form.js — Add extra income + edit monthly salary
 
-import { addIncome, setSalaryForMonth } from '../db.js';
+import { addIncome, updateIncome, setSalaryForMonth } from '../db.js';
 import { formatAmount, getSmartDefaultDate, saveLastUsedDate } from '../utils/date-utils.js';
 import { showToast } from './toast.js';
 import { createDatePicker } from './date-picker.js';
@@ -52,12 +52,14 @@ function monthLongLabel(month) {
   return new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 }
 
-export function openIncomeModal(onSaved = null) {
+export function openIncomeModal(onSaved = null, income = null) {
   onClosed = onSaved;
+  const isEdit = !!income;
+  const saveLabel = isEdit ? 'Save Changes' : 'Add Income';
 
   openSheet(`
     <div class="bottom-sheet-handle"></div>
-    <h2 class="bottom-sheet-title">Add Income</h2>
+    <h2 class="bottom-sheet-title">${isEdit ? 'Edit Income' : 'Add Income'}</h2>
 
     <div class="form-field">
       <div class="amount-input-wrapper">
@@ -90,11 +92,11 @@ export function openIncomeModal(onSaved = null) {
 
     <div style="display:flex;gap:12px;margin-top:8px">
       <button class="btn btn-secondary" id="income-cancel" style="flex:1">Cancel</button>
-      <button class="btn btn-primary" id="income-save" style="flex:2">Add Income</button>
+      <button class="btn btn-primary" id="income-save" style="flex:2">${saveLabel}</button>
     </div>
-  `, 'Add Income');
+  `, isEdit ? 'Edit Income' : 'Add Income');
 
-  let selectedDate = getSmartDefaultDate();
+  let selectedDate = income?.date || getSmartDefaultDate();
   const datePicker = createDatePicker({
     value: selectedDate,
     id: 'income-date',
@@ -111,6 +113,15 @@ export function openIncomeModal(onSaved = null) {
       chip.classList.add('active');
     });
   });
+
+  if (income) {
+    document.getElementById('income-amount').value = income.amount;
+    sourceInput.value = income.source || '';
+    document.getElementById('income-note').value = income.note || '';
+    sheetEl.querySelectorAll('.income-source-chip').forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.source === income.source);
+    });
+  }
 
   document.getElementById('income-cancel').addEventListener('click', closeSheet);
 
@@ -133,16 +144,21 @@ export function openIncomeModal(onSaved = null) {
     btn.disabled = true;
     btn.textContent = 'Saving…';
     try {
-      await addIncome({ amount, source, note, date: selectedDate });
+      if (isEdit) {
+        await updateIncome(income.id, { amount, source, note, date: selectedDate });
+        showToast(`${formatAmount(amount)} income updated ✓`, 'success');
+      } else {
+        await addIncome({ amount, source, note, date: selectedDate });
+        showToast(`${formatAmount(amount)} income added ✓`, 'success');
+      }
       saveLastUsedDate(selectedDate);
-      showToast(`${formatAmount(amount)} income added ✓`, 'success');
       const cb = onClosed;
       closeSheet();
       cb?.();
     } catch (err) {
-      showToast('Could not add income', 'error');
+      showToast(isEdit ? 'Could not update income' : 'Could not add income', 'error');
       btn.disabled = false;
-      btn.textContent = 'Add Income';
+      btn.textContent = saveLabel;
     }
   });
 
