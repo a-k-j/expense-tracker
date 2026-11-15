@@ -4,6 +4,7 @@ import { addIncome, setSalaryForMonth } from '../db.js';
 import { formatAmount, getSmartDefaultDate, saveLastUsedDate } from '../utils/date-utils.js';
 import { showToast } from './toast.js';
 import { createDatePicker } from './date-picker.js';
+import { focusAmountAtEnd } from '../utils/input-focus.js';
 
 let sheetEl = null;
 let overlayEl = null;
@@ -119,7 +120,7 @@ export function openIncomeModal(onSaved = null) {
     const note = document.getElementById('income-note').value.trim();
     if (!amount || amount <= 0) {
       showToast('Enter a valid amount', 'warning');
-      document.getElementById('income-amount').focus();
+      focusAmountAtEnd('income-amount');
       return;
     }
     if (!source) {
@@ -145,7 +146,7 @@ export function openIncomeModal(onSaved = null) {
     }
   });
 
-  setTimeout(() => document.getElementById('income-amount')?.focus(), 400);
+  setTimeout(() => focusAmountAtEnd('income-amount'), 400);
 }
 
 export function openSalaryModal({ month, value = 0, hasOverride = false, onSaved = null }) {
@@ -180,7 +181,7 @@ export function openSalaryModal({ month, value = 0, hasOverride = false, onSaved
     const amount = parseFloat(document.getElementById('salary-amount').value);
     if (!amount || amount <= 0) {
       showToast('Enter a valid salary', 'warning');
-      document.getElementById('salary-amount').focus();
+      focusAmountAtEnd('salary-amount');
       return;
     }
     const btn = document.getElementById('salary-save');
@@ -211,5 +212,5 @@ export function openSalaryModal({ month, value = 0, hasOverride = false, onSaved
     }
   });
 
-  setTimeout(() => document.getElementById('salary-amount')?.focus(), 400);
+  setTimeout(() => focusAmountAtEnd('salary-amount'), 400);
 }

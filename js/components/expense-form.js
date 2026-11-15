@@ -6,6 +6,7 @@ import { showToast } from './toast.js';
 import { renderCategoryGrid } from './category-grid.js';
 import { createDatePicker } from './date-picker.js';
 import { showConfirm } from './confirm-dialog.js';
+import { focusAmountAtEnd } from '../utils/input-focus.js';
 
 let sheetEl   = null;
 let overlayEl = null;
@@ -165,7 +166,7 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
   });
 
   // Focus amount (place the caret at the end when editing an existing value)
-  setTimeout(focusAmountAtEnd, 400);
+  setTimeout(() => focusAmountAtEnd('expense-amount'), 400);
 
   // Mount date picker
   let selectedDate = defaultDate;
@@ -204,21 +205,6 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
   addSwipeDownClose(sheetEl);
 }
 
-function focusAmountAtEnd() {
-  const input = document.getElementById('expense-amount');
-  if (!input) return;
-  input.focus({ preventScroll: true });
-  if (!input.value) return;
-  try {
-    input.setSelectionRange(input.value.length, input.value.length);
-  } catch (_) {
-    // Number inputs don't support setSelectionRange; reassigning puts the caret at the end
-    const value = input.value;
-    input.value = '';
-    input.value = value;
-  }
-}
-
 async function handleSave({ isEdit, expense, selectedCategoryGetter, dateGetter, catMap }) {
   const amountVal  = parseFloat(document.getElementById('expense-amount').value);
   const note       = document.getElementById('expense-note').value.trim();
@@ -230,7 +216,7 @@ async function handleSave({ isEdit, expense, selectedCategoryGetter, dateGetter,
 
   if (!amountVal || amountVal <= 0) {
     showToast('Please enter a valid amount', 'error');
-    document.getElementById('expense-amount').focus();
+    focusAmountAtEnd('expense-amount');
     return;
   }
   if (!categoryId) {

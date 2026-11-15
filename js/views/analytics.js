@@ -291,8 +291,6 @@ async function renderMoneyFlowBody(body) {
     allocation.push({ label: 'Left unspent', value: left, color: BUCKET_COLORS.left, items: [] });
   }
 
-  const lifestyleByCat = aggregateByCategory(lifestyleItems, catMap);
-
   // Last 6 months (ending at the selected month) for the trend bars.
   const endIdx = months.indexOf(moneyFlowMonth);
   const chartMonths = months.slice(Math.max(0, endIdx - 5), endIdx + 1);
@@ -354,12 +352,6 @@ async function renderMoneyFlowBody(body) {
       ${overspent ? `<p class="mf-warning">Outflow is ${formatAmount(Math.abs(left))} more than income this month.</p>` : ''}
     </div>
 
-    <!-- Lifestyle donut -->
-    <div class="analytics-card">
-      <div class="analytics-card-title">🍔 Lifestyle breakdown</div>
-      <div id="mf-lifestyle-donut"></div>
-    </div>
-
     <!-- 6-month graph -->
     <div class="analytics-card">
       <div class="analytics-card-title">📊 Last 6 months</div>
@@ -410,22 +402,6 @@ async function renderMoneyFlowBody(body) {
           : `No ${slice.label.toLowerCase()} entries this month.`,
       });
     },
-  });
-
-  // Donut 2 — lifestyle by category (top 6 + everything else)
-  renderDonutChart(document.getElementById('mf-lifestyle-donut'), topSlices(lifestyleByCat, 6), {
-    centerValue: formatAmountShort(lifestyleTotal),
-    centerLabel: 'Lifestyle',
-    percentBase: lifestyleTotal || 1,
-    emptyText: 'No lifestyle spending this month',
-    onSliceClick: (slice) => openSliceDetail({
-      title: slice.label,
-      subtitle: `${monthLong(moneyFlowMonth)} · ${(slice.items || []).length} entries`,
-      total: slice.value,
-      items: slice.items || [],
-      catMap,
-      emptyText: 'No transactions behind this slice.',
-    }),
   });
 
   // 6-month grouped bars

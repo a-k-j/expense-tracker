@@ -123,11 +123,10 @@ export function renderTrendLine(container, labels, values, color = 'var(--accent
   labelsEl.className = 'trend-labels';
 
   const showIdxs = getAxisLabelIndices(n);
-  const labelSpans = labels.map((lbl, i) => {
-    const visible = showIdxs.includes(i);
-    const d = new Date(lbl + 'T00:00:00');
+  const labelSpans = showIdxs.map(i => {
+    const d = new Date(labels[i] + 'T00:00:00');
     const text = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-    return `<span class="trend-label" style="${visible ? '' : 'visibility:hidden'}">${text}</span>`;
+    return `<span class="trend-label">${text}</span>`;
   });
   labelsEl.innerHTML = labelSpans.join('');
 

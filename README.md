@@ -106,8 +106,7 @@ SpendSense can be installed on your phone or computer for a full-screen, app-lik
   - **Income** = the month's salary (default or per-month override) plus any extra income entries.
   - **KPI cards** for Spent, Invested, Saved and Left (or Overspent), with percentages of income.
   - **Where the money went** donut: rent & utilities, lifestyle, investments, savings and left unspent.
-  - **Lifestyle breakdown** donut by category.
-  - **Tap any slice or legend row** in either donut to see the transactions behind it.
+  - **Tap any slice or legend row** to see the transactions behind it.
   - **Last 6 months** bar graph comparing income, outflow and investments.
   - **Edit salary** for the selected month, or **+ Income** to add money from parents, a bonus, refund or gift.
 

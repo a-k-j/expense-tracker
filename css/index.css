@@ -1798,14 +1798,20 @@ input, textarea, select {
   flex-direction: column;
   align-items: center;
   gap: var(--space-md);
+  min-width: 0;
 }
 
 .donut-wrap {
   position: relative;
   flex-shrink: 0;
+  max-width: 100%;
 }
 
-.donut-wrap svg { display: block; }
+.donut-wrap svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
 
 .donut-wrap circle {
   transition: stroke-dasharray 0.6s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1839,6 +1845,7 @@ input, textarea, select {
 
 .donut-legend {
   width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1849,6 +1856,7 @@ input, textarea, select {
   align-items: center;
   gap: 8px;
   font-size: var(--text-sm);
+  min-width: 0;
 }
 
 .donut-legend-dot {
@@ -1861,6 +1869,7 @@ input, textarea, select {
 .donut-legend-label {
   color: var(--text-secondary);
   flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1870,6 +1879,8 @@ input, textarea, select {
   color: var(--text-primary);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .donut-legend-pct {
@@ -1878,6 +1889,7 @@ input, textarea, select {
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
+  flex-shrink: 0;
 }
 
 /* === Grouped Bars === */
@@ -2192,14 +2204,6 @@ input, textarea, select {
 .bucket-badge.bucket-savings {
   background: rgba(59, 130, 246, 0.18);
   color: #60a5fa;
-}
-
-@media (min-width: 420px) {
-  .donut-layout {
-    flex-direction: row;
-    align-items: center;
-  }
-  .donut-legend { flex: 1; }
 }
 
 /* === Interactive donut slices === */

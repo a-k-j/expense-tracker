@@ -13,6 +13,7 @@ import { renderCategoryGrid } from '../components/category-grid.js';
 import { openAddExpense }    from '../components/expense-form.js';
 import { showToast }         from '../components/toast.js';
 import { createDatePicker }  from '../components/date-picker.js';
+import { focusAmountAtEnd }  from '../utils/input-focus.js';
 
 export async function renderDashboard(container) {
   container.innerHTML = `<div class="page" id="dashboard-page"><div class="spinner"></div></div>`;
@@ -215,7 +216,7 @@ export async function renderDashboard(container) {
     const amount = parseFloat(amountInput.value);
     if (!amount || amount <= 0) {
       showToast('Enter a valid amount', 'warning');
-      amountInput.focus();
+      focusAmountAtEnd(amountInput);
       return;
     }
     if (!selectedQuickCat) {

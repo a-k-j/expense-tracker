@@ -1,6 +1,6 @@
 // sw.js — Service Worker: cache-first strategy for offline support
 
-const CACHE_NAME = 'spendsense-v20';
+const CACHE_NAME = 'spendsense-v21';
 const STATIC_URLS = [
   './',
   './index.html',
@@ -13,6 +13,7 @@ const STATIC_URLS = [
   './js/utils/auto-backup.js',
   './js/utils/csv-export.js',
   './js/utils/json-backup.js',
+  './js/utils/input-focus.js',
   './js/components/toast.js',
   './js/components/category-grid.js',
   './js/components/expense-form.js',
