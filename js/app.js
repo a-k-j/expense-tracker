@@ -21,6 +21,9 @@ const VIEWS = {
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 async function boot() {
+  // Keep bottom sheets above the on-screen keyboard
+  setupKeyboardInsets();
+
   // Register service worker & check for updates
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then(reg => {
@@ -58,6 +61,25 @@ async function boot() {
   const hash = location.hash.replace('#/', '') || 'dashboard';
   const view = VIEWS[hash] ? hash : 'dashboard';
   await navigateTo(view, false);
+}
+
+// ── Keyboard-aware bottom sheets ──────────────────────────────────────────────
+function setupKeyboardInsets() {
+  const root = document.documentElement;
+  const vv = window.visualViewport;
+  if (!vv) return;
+
+  const update = () => {
+    // Chrome/Android can resize the layout viewport itself (interactive-widget).
+    // When it doesn't, visualViewport shrinks by the keyboard height instead.
+    const keyboardInset = Math.max(0, window.innerHeight - vv.height);
+    root.style.setProperty('--keyboard-inset', `${Math.round(keyboardInset)}px`);
+    root.style.setProperty('--vv-height', `${Math.round(vv.height)}px`);
+  };
+
+  vv.addEventListener('resize', update);
+  vv.addEventListener('scroll', update);
+  update();
 }
 
 // ── Router ────────────────────────────────────────────────────────────────────

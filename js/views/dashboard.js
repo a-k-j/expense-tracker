@@ -134,7 +134,7 @@ export async function renderDashboard(container) {
         <label class="form-label" style="margin-bottom:0;font-size:13px;white-space:nowrap;color:var(--text-muted);">Date</label>
         <div id="quick-date-picker" style="max-width:180px"></div>
       </div>
-      <div class="form-field mb-md">
+      <div class="form-field mb-md" id="quick-exclude-wrapper">
         <div class="toggle-row">
           <div class="toggle-row-info">
             <div class="toggle-row-label">Exclude from Analytics</div>
@@ -179,12 +179,23 @@ export async function renderDashboard(container) {
     }));
   }
 
-  const updateQuickCustomNameVisibility = (id) => {
+  const updateQuickCategoryFields = (id) => {
     const wrap = document.getElementById('quick-custom-name-wrapper');
-    if (!wrap) return;
     const cat = catMap[id];
     const isOther = cat && cat.name.toLowerCase().startsWith('other');
-    wrap.style.display = isOther ? 'block' : 'none';
+    if (wrap) wrap.style.display = isOther ? 'block' : 'none';
+
+    // Investment/savings entries aren't lifestyle spending, so exclusion does
+    // not apply to them.
+    const excludeWrap = document.getElementById('quick-exclude-wrapper');
+    if (excludeWrap) {
+      const isLifestyle = !cat || categoryBucket(cat) === 'expense';
+      excludeWrap.style.display = isLifestyle ? '' : 'none';
+      if (!isLifestyle) {
+        const checkbox = document.getElementById('quick-exclude-analytics');
+        if (checkbox) checkbox.checked = false;
+      }
+    }
   };
 
   // Render category quick-add grid
@@ -195,10 +206,10 @@ export async function renderDashboard(container) {
     selectedQuickCat,
     (id) => {
       selectedQuickCat = id;
-      updateQuickCustomNameVisibility(id);
+      updateQuickCategoryFields(id);
     }
   );
-  updateQuickCustomNameVisibility(selectedQuickCat);
+  updateQuickCategoryFields(selectedQuickCat);
 
   // Mount quick-add date picker
   let quickDateValue = getSmartDefaultDate();
@@ -235,7 +246,9 @@ export async function renderDashboard(container) {
     const btn = document.getElementById('quick-add-btn');
     btn.disabled = true;
     try {
-      const excludeFromAnalytics = document.getElementById('quick-exclude-analytics')?.checked || false;
+      const isLifestyle = !selectedCat || categoryBucket(selectedCat) === 'expense';
+      const excludeFromAnalytics = isLifestyle
+        && (document.getElementById('quick-exclude-analytics')?.checked || false);
       const { addExpense } = await import('../db.js');
       await addExpense({ amount, categoryId: selectedQuickCat, customName, date, excludeFromAnalytics });
       // Remember the date so adding several back-dated entries is quicker

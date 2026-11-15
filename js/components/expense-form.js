@@ -1,6 +1,6 @@
 // js/components/expense-form.js — Add/Edit expense bottom sheet
 
-import { getCategories, addExpense, updateExpense, deleteExpense } from '../db.js';
+import { getCategories, addExpense, updateExpense, deleteExpense, categoryBucket } from '../db.js';
 import { formatAmount, getSmartDefaultDate, saveLastUsedDate } from '../utils/date-utils.js';
 import { showToast } from './toast.js';
 import { renderCategoryGrid } from './category-grid.js';
@@ -106,7 +106,7 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
     </div>
 
     <!-- Exclude from Analytics -->
-    <div class="form-field">
+    <div class="form-field" id="expense-exclude-wrapper">
       <div class="toggle-row">
         <div class="toggle-row-info">
           <div class="toggle-row-label">Exclude from Analytics</div>
@@ -137,12 +137,25 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
 
   document.body.appendChild(sheetEl);
 
-  const updateCustomNameVisibility = (catId) => {
+  const updateCategoryDependentFields = (catId) => {
     const wrapper = document.getElementById('expense-custom-name-wrapper');
-    if (!wrapper) return;
     const cat = catMap[catId];
-    const isOther = cat && cat.name.toLowerCase().startsWith('other');
-    wrapper.style.display = isOther ? 'block' : 'none';
+    if (wrapper) {
+      const isOther = cat && cat.name.toLowerCase().startsWith('other');
+      wrapper.style.display = isOther ? 'block' : 'none';
+    }
+
+    // Investment and savings entries never count as lifestyle spending, so the
+    // "Exclude from Analytics" toggle is meaningless for them.
+    const excludeWrapper = document.getElementById('expense-exclude-wrapper');
+    if (excludeWrapper) {
+      const isLifestyle = !cat || categoryBucket(cat) === 'expense';
+      excludeWrapper.style.display = isLifestyle ? '' : 'none';
+      if (!isLifestyle) {
+        const checkbox = document.getElementById('expense-exclude-analytics');
+        if (checkbox) checkbox.checked = false;
+      }
+    }
   };
 
   // Render category grid inside sheet
@@ -153,12 +166,12 @@ async function buildSheet({ mode, expense = null, prefillCategory = null }) {
     selectedCatId,
     (catId) => {
       selectedCategory = catId;
-      updateCustomNameVisibility(catId);
+      updateCategoryDependentFields(catId);
     }
   );
 
   // Initial check
-  updateCustomNameVisibility(selectedCatId);
+  updateCategoryDependentFields(selectedCatId);
 
   // Activate
   requestAnimationFrame(() => {
@@ -210,10 +223,12 @@ async function handleSave({ isEdit, expense, selectedCategoryGetter, dateGetter,
   const amountVal  = parseFloat(document.getElementById('expense-amount').value);
   const note       = document.getElementById('expense-note').value.trim();
   const customName = document.getElementById('expense-custom-name')?.value.trim() || '';
-  const excludeFromAnalytics = document.getElementById('expense-exclude-analytics')?.checked || false;
   const date       = dateGetter();
   const categoryId = selectedCategoryGetter();
   const selectedCat = catMap[categoryId];
+  const isLifestyle = !selectedCat || categoryBucket(selectedCat) === 'expense';
+  const excludeFromAnalytics = isLifestyle
+    && (document.getElementById('expense-exclude-analytics')?.checked || false);
 
   if (!amountVal || amountVal <= 0) {
     showToast('Please enter a valid amount', 'error');

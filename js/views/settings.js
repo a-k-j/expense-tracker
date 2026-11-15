@@ -31,13 +31,21 @@ export async function renderSettings(container) {
 }
 
 async function buildSettings(page) {
-  const [categories, budget, defaultSalary, autoBackup, backups] = await Promise.all([
+  const [categories, budget, defaultSalary, rolloverEnabled, storedRolloverNegative, autoBackup, backups] = await Promise.all([
     getCategories(),
     getSetting('budget', 0),
     getSetting('defaultSalary', 0),
+    getSetting('rolloverEnabled', false),
+    getSetting('rolloverNegative', false),
     getAutoBackupConfig(),
     getBackupList(),
   ]);
+
+  // Negative carry-over only applies while carry-over itself is on.
+  const rolloverNegative = rolloverEnabled && storedRolloverNegative;
+  if (storedRolloverNegative && !rolloverEnabled) {
+    await setSetting('rolloverNegative', false);
+  }
 
   page.innerHTML = `
     <div style="padding:8px 0 16px">
@@ -110,6 +118,30 @@ async function buildSettings(page) {
             <div class="settings-item-sub">Override individual months in Analytics → Money Flow</div>
           </div>
         </button>
+        <div class="settings-item" style="cursor:default;">
+          <div class="settings-item-icon" style="background:rgba(59,130,246,0.15)">🔁</div>
+          <div class="settings-item-info">
+            <div class="settings-item-title">Carry over leftover</div>
+            <div class="settings-item-sub">Add last month's leftover to the next month</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="rollover-enabled" ${rolloverEnabled ? 'checked' : ''} aria-label="Carry over leftover money" />
+            <span class="toggle-track"></span>
+            <span class="toggle-knob"></span>
+          </label>
+        </div>
+        <div class="settings-item" id="rollover-negative-row" style="cursor:default;${rolloverEnabled ? '' : 'opacity:0.5;'}">
+          <div class="settings-item-icon" style="background:rgba(239,68,68,0.15)">📉</div>
+          <div class="settings-item-info">
+            <div class="settings-item-title">Allow negative carry-over</div>
+            <div class="settings-item-sub">Overspending reduces next month's available money</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="rollover-negative" ${rolloverNegative ? 'checked' : ''} ${rolloverEnabled ? '' : 'disabled'} aria-label="Allow negative leftover to carry over" />
+            <span class="toggle-track"></span>
+            <span class="toggle-knob"></span>
+          </label>
+        </div>
       </div>
     </div>
 
@@ -268,6 +300,27 @@ async function buildSettings(page) {
     const val = parseFloat(document.getElementById('salary-input').value) || 0;
     await setSetting('defaultSalary', val);
     showToast(val > 0 ? `Default salary set to ${formatAmount(val)}` : 'Default salary cleared', 'success');
+  });
+
+  // Rollover settings
+  document.getElementById('rollover-enabled').addEventListener('change', async (e) => {
+    const enabled = e.target.checked;
+    await setSetting('rolloverEnabled', enabled);
+
+    const negativeInput = document.getElementById('rollover-negative');
+    if (!enabled) {
+      // Turning carry-over off also turns negative carry-over off.
+      await setSetting('rolloverNegative', false);
+      if (negativeInput) negativeInput.checked = false;
+    }
+    if (negativeInput) negativeInput.disabled = !enabled;
+
+    const row = document.getElementById('rollover-negative-row');
+    if (row) row.style.opacity = enabled ? '1' : '0.5';
+  });
+
+  document.getElementById('rollover-negative').addEventListener('change', async (e) => {
+    await setSetting('rolloverNegative', e.target.checked);
   });
 
   // Add category

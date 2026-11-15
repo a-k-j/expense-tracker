@@ -27,6 +27,7 @@ const BUCKET_COLORS = {
 };
 
 let analyticsMode = 'lifestyle';
+let lifestyleMonth = null;
 let moneyFlowMonth = null;
 
 export async function renderAnalytics(container) {
@@ -76,24 +77,44 @@ export async function renderAnalytics(container) {
 async function renderLifestyleBody(body) {
   body.innerHTML = `<div class="spinner"></div>`;
 
-  const categories  = await getCategories();
-  const thisWeek    = getThisWeekRange();
-  const prevWeek    = getPrevWeekRange();
-  const monthStart  = getMonthStart();
-  const monthEnd    = getMonthEnd();
+  const categories   = await getCategories();
+  const thisWeek     = getThisWeekRange();
+  const prevWeek     = getPrevWeekRange();
+  const today        = getTodayStr();
+  const currentMonth = today.slice(0, 7);
+  const currentMonthStart = getMonthStart();
+  const currentMonthEnd   = getMonthEnd();
 
-  const [thisWeekExp, prevWeekExp, monthExp] = await Promise.all([
+  const [thisWeekExp, prevWeekExp, allExpenses] = await Promise.all([
     getExpensesByDateRangeForAnalytics(thisWeek.start, thisWeek.end),
     getExpensesByDateRangeForAnalytics(prevWeek.start, prevWeek.end),
-    getExpensesByDateRangeForAnalytics(monthStart, monthEnd),
+    getAllExpenses(),
   ]);
 
-  const thisWeekTotal = await sumTotal(thisWeekExp);
-  const prevWeekTotal = await sumTotal(prevWeekExp);
-  const monthCatSum   = await sumByCategory(monthExp);
+  // Months that have actual expenses, plus the current month.
+  const monthSet = new Set([currentMonth]);
+  allExpenses.forEach(e => { if (e.date) monthSet.add(e.date.slice(0, 7)); });
+  const months = [...monthSet].sort();
+  if (!lifestyleMonth || !months.includes(lifestyleMonth)) lifestyleMonth = currentMonth;
+
+  const selectedRange = monthRange(lifestyleMonth);
+  const [currentMonthExpFromFetch, selectedMonthExp] = await Promise.all([
+    lifestyleMonth === currentMonth
+      ? Promise.resolve(null)
+      : getExpensesByDateRangeForAnalytics(currentMonthStart, currentMonthEnd),
+    getExpensesByDateRangeForAnalytics(selectedRange.start, selectedRange.end),
+  ]);
+  const currentMonthExp = lifestyleMonth === currentMonth
+    ? selectedMonthExp
+    : (currentMonthExpFromFetch || []);
+
+  const thisWeekTotal      = await sumTotal(thisWeekExp);
+  const prevWeekTotal      = await sumTotal(prevWeekExp);
+  const currentMonthTotal  = await sumTotal(currentMonthExp);
+  const selectedMonthTotal = await sumTotal(selectedMonthExp);
 
   const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
-  const lifestyleByCat = aggregateByCategory(monthExp, catMap);
+  const lifestyleByCat = aggregateByCategory(selectedMonthExp, catMap);
 
   // Daily totals for trend line (last 30 days) — analytics-filtered
   const trendEnd   = new Date();
@@ -117,9 +138,9 @@ async function renderLifestyleBody(body) {
   const highestDayStat = maxTrendValue > 0
     ? trendStat('Highest Day', maxTrendValue, trendDates[trendValues.indexOf(maxTrendValue)])
     : trendStat('Highest Day', 0, null);
-  const monthTotal = await sumTotal(monthExp);
   const daysElapsedInMonth = new Date().getDate();
-  const avgPerDay = daysElapsedInMonth > 0 ? (monthTotal / daysElapsedInMonth) : 0;
+  const avgPerDay = daysElapsedInMonth > 0 ? (currentMonthTotal / daysElapsedInMonth) : 0;
+  const monthCatSum = await sumByCategory(selectedMonthExp);
 
   body.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:flex-end;padding:0 0 10px">
@@ -161,20 +182,28 @@ async function renderLifestyleBody(body) {
       <div style="display:flex;gap:16px;justify-content:space-between">
         ${highestDayStat}
         ${trendStat('Avg / Day', avgPerDay, null)}
-        ${trendStat('This Month', monthTotal, null)}
+        ${trendStat('This Month', currentMonthTotal, null)}
       </div>
     </div>
 
     <!-- Monthly Category Donut -->
     <div class="analytics-card">
-      <div class="analytics-card-title">🥧 This Month — Where It Went</div>
+      <div class="mf-month-bar" style="margin-bottom:12px">
+        <div>
+          <div class="analytics-card-title" style="margin:0">🥧 Where It Went</div>
+          <div class="mf-month-sub">${monthLong(lifestyleMonth)} · lifestyle only</div>
+        </div>
+        <select id="lf-month-select" class="form-input mf-month-select" aria-label="Select lifestyle month">
+          ${[...months].reverse().map(m => `<option value="${m}" ${m === lifestyleMonth ? 'selected' : ''}>${monthShort(m)}</option>`).join('')}
+        </select>
+      </div>
       <div id="lifestyle-donut"></div>
       <p class="analytics-note" style="margin:12px 0 0">Tap a slice or legend row to see the transactions behind it.</p>
     </div>
 
     <!-- Monthly Category Breakdown -->
     <div class="analytics-card">
-      <div class="analytics-card-title">🗂️ This Month — By Category</div>
+      <div class="analytics-card-title">🗂️ ${monthLong(lifestyleMonth)} — By Category</div>
       <div class="chart-container" id="cat-chart"></div>
     </div>
 
@@ -201,13 +230,13 @@ async function renderLifestyleBody(body) {
     document.getElementById('lifestyle-donut'),
     topSlices(lifestyleByCat, 6),
     {
-      centerValue: formatAmountShort(monthTotal),
+      centerValue: formatAmountShort(selectedMonthTotal),
       centerLabel: 'Lifestyle',
-      percentBase: monthTotal || 1,
+      percentBase: selectedMonthTotal || 1,
       emptyText: 'No lifestyle spending this month',
       onSliceClick: (slice) => openSliceDetail({
         title: slice.label,
-        subtitle: `${monthLong(getTodayStr().slice(0, 7))} · ${(slice.items || []).length} entries`,
+        subtitle: `${monthLong(lifestyleMonth)} · ${(slice.items || []).length} entries`,
         total: slice.value,
         items: slice.items || [],
         catMap,
@@ -217,18 +246,25 @@ async function renderLifestyleBody(body) {
   );
 
   renderBarChart(document.getElementById('cat-chart'), categories, monthCatSum);
+
+  document.getElementById('lf-month-select').addEventListener('change', (e) => {
+    lifestyleMonth = e.target.value;
+    renderLifestyleBody(body);
+  });
 }
 
 // ── Money Flow mode ──────────────────────────────────────────────────────────
 async function renderMoneyFlowBody(body) {
   body.innerHTML = `<div class="spinner"></div>`;
 
-  const [categories, allExpenses, allIncomes, salaryOverrides, defaultSalary] = await Promise.all([
+  const [categories, allExpenses, allIncomes, salaryOverrides, defaultSalary, rolloverEnabled, rolloverNegative] = await Promise.all([
     getCategories(),
     getAllExpenses(),
     getAllIncomes(),
     getSetting('salaryByMonth', {}),
     getSetting('defaultSalary', 0),
+    getSetting('rolloverEnabled', false),
+    getSetting('rolloverNegative', false),
   ]);
 
   const catMap = Object.fromEntries(categories.map(c => [c.id, c]));
@@ -264,6 +300,20 @@ async function renderMoneyFlowBody(body) {
   const otherIncome = sum(monthIncomes);
   const incomeTotal = salary + otherIncome;
 
+  // Roll earlier months' leftover into the selected month when enabled.
+  // Negative leftovers are discarded unless the user opts in.
+  let carriedIn = 0;
+  if (rolloverEnabled) {
+    for (const m of months) {
+      if (m >= moneyFlowMonth) break;
+      const inflow  = salaryFor(m) + sum(incomeMonths[m] || []);
+      const outflow = sum(expenseMonths[m] || []);
+      const monthLeft = inflow + carriedIn - outflow;
+      carriedIn = (monthLeft < 0 && !rolloverNegative) ? 0 : monthLeft;
+    }
+  }
+  const available = incomeTotal + carriedIn;
+
   const rentItems      = monthExpenses.filter(e => bucketOf(e) === 'expense' && isRent(e));
   const investmentItems = monthExpenses.filter(e => bucketOf(e) === 'investment');
   const savingsItems    = monthExpenses.filter(e => bucketOf(e) === 'savings');
@@ -275,19 +325,20 @@ async function renderMoneyFlowBody(body) {
   const lifestyleTotal  = sum(lifestyleItems);
   const spentTotal      = rentTotal + lifestyleTotal;
   const outflowTotal    = spentTotal + investmentTotal + savingsTotal;
-  const left            = incomeTotal - outflowTotal;
+  const left            = available - outflowTotal;
   const overspent       = left < 0;
 
-  const pctOfIncome = (value) => incomeTotal > 0 ? (value / incomeTotal) * 100 : null;
+  const pctBase = available > 0 ? available : incomeTotal;
+  const pctOfIncome = (value) => pctBase > 0 ? (value / pctBase) * 100 : null;
 
-  // Donut segments. When income is known, "left" closes the ring.
+  // Donut segments. When inflow is known, "left" closes the ring.
   const allocation = [
     { label: 'Rent & utilities', value: rentTotal,       color: BUCKET_COLORS.rent,       items: rentItems },
     { label: 'Lifestyle',        value: lifestyleTotal,  color: BUCKET_COLORS.lifestyle,  items: lifestyleItems },
     { label: 'Investments',      value: investmentTotal, color: BUCKET_COLORS.investment, items: investmentItems },
     { label: 'Savings',          value: savingsTotal,    color: BUCKET_COLORS.savings,    items: savingsItems },
   ];
-  if (!overspent && incomeTotal > 0) {
+  if (!overspent && available > 0) {
     allocation.push({ label: 'Left unspent', value: left, color: BUCKET_COLORS.left, items: [] });
   }
 
@@ -308,7 +359,7 @@ async function renderMoneyFlowBody(body) {
     <div class="mf-month-bar">
       <div>
         <div class="mf-month-label">${monthLong(moneyFlowMonth)}</div>
-        <div class="mf-month-sub">${salary > 0 ? 'Salary + extra income' : 'No salary set for this month'}</div>
+        ${incomeTotal > 0 ? '' : '<div class="mf-month-sub">No inflow recorded for this month</div>'}
       </div>
       <select id="mf-month-select" class="form-input mf-month-select" aria-label="Select month">
         ${[...months].reverse().map(m => `<option value="${m}" ${m === moneyFlowMonth ? 'selected' : ''}>${monthShort(m)}</option>`).join('')}
@@ -319,11 +370,15 @@ async function renderMoneyFlowBody(body) {
     <div class="analytics-card mf-income-card">
       <div class="mf-income-head">
         <div>
-          <div class="mf-income-label">Income</div>
+          <div class="mf-income-label">Total Inflow</div>
           <div class="mf-income-value">${incomeTotal > 0 ? formatAmount(incomeTotal) : '—'}</div>
           <div class="mf-income-breakdown">
             Salary ${formatAmount(salary)}${otherIncome > 0 ? ` · Other ${formatAmount(otherIncome)}` : ''}
           </div>
+          ${rolloverEnabled && carriedIn !== 0 ? `
+          <div class="mf-carry-line ${carriedIn < 0 ? 'negative' : ''}">
+            Carried over ${signedAmount(carriedIn)} · Available ${formatAmount(available)}
+          </div>` : ''}
         </div>
         <div class="mf-income-actions">
           <button class="filter-chip" id="mf-edit-salary" type="button">Edit salary</button>
@@ -340,8 +395,6 @@ async function renderMoneyFlowBody(body) {
     <!-- KPIs -->
     <div class="mf-kpi-grid">
       ${kpiCard('Spent', spentTotal, pctOfIncome(spentTotal), BUCKET_COLORS.lifestyle)}
-      ${kpiCard('Invested', investmentTotal, pctOfIncome(investmentTotal), BUCKET_COLORS.investment)}
-      ${kpiCard('Saved', savingsTotal, pctOfIncome(savingsTotal), BUCKET_COLORS.savings)}
       ${kpiCard(overspent ? 'Overspent' : 'Left', Math.abs(left), pctOfIncome(Math.abs(left)), overspent ? BUCKET_COLORS.overspent : BUCKET_COLORS.left)}
     </div>
 
@@ -349,7 +402,7 @@ async function renderMoneyFlowBody(body) {
     <div class="analytics-card">
       <div class="analytics-card-title">🧭 Where the money went</div>
       <div id="mf-allocation-donut"></div>
-      ${overspent ? `<p class="mf-warning">Outflow is ${formatAmount(Math.abs(left))} more than income this month.</p>` : ''}
+      ${overspent ? `<p class="mf-warning">Outflow is ${formatAmount(Math.abs(left))} more than available this month.</p>` : ''}
     </div>
 
     <!-- 6-month graph -->
@@ -381,24 +434,24 @@ async function renderMoneyFlowBody(body) {
 
   // Donut 1 — allocation of income
   renderDonutChart(document.getElementById('mf-allocation-donut'), allocation, {
-    centerValue: overspent || incomeTotal <= 0
+    centerValue: overspent || available <= 0
       ? formatAmountShort(outflowTotal)
-      : formatAmountShort(incomeTotal),
-    centerLabel: overspent || incomeTotal <= 0 ? 'Outflow' : 'Income',
-    percentBase: overspent || incomeTotal <= 0 ? outflowTotal : incomeTotal,
+      : formatAmountShort(available),
+    centerLabel: overspent || available <= 0 ? 'Outflow' : 'Available',
+    percentBase: overspent || available <= 0 ? outflowTotal : available,
     emptyText: 'No expenses this month',
     onSliceClick: (slice) => {
       const isLeft = slice.label === 'Left unspent';
       openSliceDetail({
         title: slice.label,
         subtitle: isLeft
-          ? `${monthLong(moneyFlowMonth)} · income not spent`
+          ? `${monthLong(moneyFlowMonth)} · money not spent`
           : `${monthLong(moneyFlowMonth)} · ${(slice.items || []).length} entries`,
         total: slice.value,
         items: slice.items || [],
         catMap,
         emptyText: isLeft
-          ? 'This is the income left after rent, lifestyle, investments and savings.'
+          ? 'This is the money left after rent, lifestyle, investments and savings, including any carried-over leftover.'
           : `No ${slice.label.toLowerCase()} entries this month.`,
       });
     },
@@ -409,7 +462,7 @@ async function renderMoneyFlowBody(body) {
     document.getElementById('mf-trend-chart'),
     chartMonths.map(m => ({ label: monthLetter(m) })),
     [
-      { label: 'Income',   color: 'var(--accent-light)', values: chartIncome },
+      { label: 'Inflow',   color: 'var(--accent-light)', values: chartIncome },
       { label: 'Outflow',  color: BUCKET_COLORS.lifestyle, values: chartOutflow },
       { label: 'Invested', color: BUCKET_COLORS.investment, values: chartInvested },
     ]
@@ -466,6 +519,16 @@ function groupByMonth(rows) {
   return map;
 }
 
+function monthRange(month) {
+  const [y, m] = month.split('-').map(Number);
+  return { start: new Date(y, m - 1, 1), end: new Date(y, m, 0) };
+}
+
+function signedAmount(amount) {
+  const value = Number(amount) || 0;
+  return `${value < 0 ? '−' : '+'}${formatAmount(Math.abs(value))}`;
+}
+
 function aggregateByCategory(items, catMap) {
   const map = {};
   for (const e of items) {
@@ -503,7 +566,7 @@ function kpiCard(label, value, pct, color) {
     <div class="mf-kpi" style="--kpi-color:${color}">
       <div class="mf-kpi-label">${label}</div>
       <div class="mf-kpi-value">${formatAmountShort(value)}</div>
-      <div class="mf-kpi-pct">${pct === null ? '—' : pct.toFixed(0) + '% of income'}</div>
+      <div class="mf-kpi-pct">${pct === null ? '—' : pct.toFixed(0) + '% of available'}</div>
     </div>`;
 }
 

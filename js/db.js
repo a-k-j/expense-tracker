@@ -89,6 +89,8 @@ async function seedIfEmpty() {
     budgetAlertsSeen: [],
     defaultSalary: 0,
     salaryByMonth: {},
+    rolloverEnabled: false,
+    rolloverNegative: false,
   };
   for (const [key, value] of Object.entries(defaults)) {
     const row = await db.settings.get(key);

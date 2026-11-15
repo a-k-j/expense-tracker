@@ -758,7 +758,7 @@ input, textarea, select {
 
 .bottom-sheet {
   position: fixed;
-  bottom: 0;
+  bottom: var(--keyboard-inset, 0px);
   left: 50%;
   transform: translateX(-50%) translateY(100%);
   width: 100%;
@@ -768,9 +768,10 @@ input, textarea, select {
   border-top: 1px solid var(--border);
   padding: var(--space-md) var(--space-md) calc(var(--space-lg) + var(--safe-bottom));
   z-index: 300;
-  transition: transform var(--transition-slow);
-  max-height: 92dvh;
+  transition: transform var(--transition-slow), bottom 160ms ease;
+  max-height: min(92dvh, calc(var(--vv-height, 100dvh) - 12px));
   overflow-y: auto;
+  scroll-padding-bottom: 24px;
 }
 
 .bottom-sheet.open {
@@ -2014,6 +2015,15 @@ input, textarea, select {
   color: var(--text-secondary);
   margin-top: 2px;
 }
+
+.mf-carry-line {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.mf-carry-line.negative { color: #f87171; }
 
 .mf-income-actions {
   display: flex;

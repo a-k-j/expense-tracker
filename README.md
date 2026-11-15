@@ -17,11 +17,12 @@ SpendSense is a modern, privacy-first Progressive Web Application (PWA) designed
   - **Week-over-Week Comparison**: Track spending changes compared to the previous week.
   - **Daily Breakdown**: See day-by-day spending for the current week.
   - **30-Day Trend Line**: Interactive trend chart with stats (Highest Day, Daily Average, Monthly Total).
-  - **Donut & Bar Charts**: Allocation donuts for income, plus a 6-month income vs outflow vs invested bar graph.
+  - **Donut & Bar Charts**: A month-by-month lifestyle donut, allocation donut for inflow, plus a 6-month inflow vs outflow vs invested bar graph.
 - **💰 Salary & Income Tracking**:
   - Set a default monthly take-home salary, with per-month overrides (e.g. a different amount for August).
   - Log extra income (from parents, bonuses, refunds, gifts) as first-class entries.
-  - Mark categories as **Expense**, **Investment** or **Savings**, so SIPs count as invested without inflating lifestyle spending.
+  - Mark categories as **Expense**, **Investment** or **Savings**, so SIPs count as invested without inflating lifestyle spending. The *Exclude from Analytics* toggle is hidden for investment and savings entries because they never count as lifestyle spending.
+  - **Optional leftover carry-over**: Roll each month's unspent money into the next month, with a sub-toggle to decide whether overspending (negative leftover) should carry forward too.
 - **📅 Custom Dark Calendar Date Picker**: Popover date selection with past/future date support and smart date defaulting.
 - **🏷️ Customizable Categories**: Add, edit, delete, and reorder categories with custom emoji and color palettes.
 - **🔍 History & Advanced Filtering**: Filter past expenses by custom date ranges and category chips.
@@ -101,20 +102,22 @@ SpendSense can be installed on your phone or computer for a full-screen, app-lik
 - **Lifestyle** excludes rent, investments, savings and anything marked *Exclude from Analytics*. It shows:
   - **Week-over-Week**: A comparison of this week's total versus last week's total with delta percentages.
   - **30-Day Spending Trend**: Daily spending peaks and averages.
-  - **This Month — Where It Went**: A donut of the month's lifestyle spending by category. Tap any slice or legend row to see the transactions behind it, or press and hold a slice to preview its category and amount.
+  - **Where It Went**: A donut of lifestyle spending by category for the month you pick. Use the month selector to look back at any month, then tap a slice or legend row to see the transactions behind it, or press and hold a slice to preview its category and amount.
 - **Money Flow** shows the whole month:
-  - **Income** = the month's salary (default or per-month override) plus any extra income entries.
-  - **KPI cards** for Spent, Invested, Saved and Left (or Overspent), with percentages of income.
+  - **Total Inflow** = the month's salary (default or per-month override) plus any extra income entries.
+  - **KPI cards** for Spent and Left (or Overspent), with percentages of available money.
+  - **Optional carry-over** adds the previous month's leftover to this month's available money. If negative carry-over is turned off, overspending resets the carried amount to zero instead of reducing next month.
   - **Where the money went** donut: rent & utilities, lifestyle, investments, savings and left unspent.
   - **Tap any slice or legend row** to see the transactions behind it, or **press and hold** a slice for a quick category + amount preview.
   - The detail sheet can be dismissed with the Close button, the overlay, `Esc`, or by swiping it down.
-  - **Last 6 months** bar graph comparing income, outflow and investments.
+  - **Last 6 months** bar graph comparing inflow, outflow and investments.
   - **Edit salary** for the selected month, or **+ Income** to add money from parents, a bonus, refund or gift.
 
 ### 5. Settings & Data Management
 - Navigate to the **Settings** tab (`#/settings`).
 - **Monthly Budget**: Enter your monthly limit in rupees (₹) and tap **Save Budget**.
 - **Default Monthly Salary**: Set the take-home salary used for months without an override, then fine-tune individual months inside Money Flow.
+- **Carry over leftover**: Add each month's unspent money to the next month. Use the sub-toggle if overspending should also reduce next month's available money. Turning carry-over off also turns this sub-toggle off.
 - **Categories Manager**: Add custom categories with chosen emojis & HSL color codes, set their **Type** (Expense / Investment / Savings), or drag/reorder existing ones.
 - **CSV Export**: Select a date range and download your expenses as a UTF-8 CSV file.
 - **JSON Data Backup**: Create a full backup (`spendsense_backup_YYYY-MM-DD.json`).
@@ -155,7 +158,7 @@ expense-tracker/
 │   └── index.css             # Main stylesheet & CSS design system
 ├── js/
 │   ├── app.js                # App entry point, Router, & Navigation setup
-│   ├── config.js             # App constants & versioning (v1.22.0)
+│   ├── config.js             # App constants & versioning (v1.23.0)
 │   ├── db.js                 # Dexie.js setup, schema definitions & CRUD helpers
 │   ├── components/
 │   │   ├── category-grid.js  # Category selection grid
