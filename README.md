@@ -69,7 +69,7 @@ SpendSense can be installed on your phone or computer for a full-screen, app-lik
 - **Lifestyle** excludes rent, investments, savings and anything marked *Exclude from Analytics*. It shows:
   - **Week-over-Week**: A comparison of this week's total versus last week's total with delta percentages.
   - **30-Day Spending Trend**: Daily spending peaks and averages.
-  - **Where It Went**: A donut of lifestyle spending by category for the month you pick. Use the month selector to look back at any month, then tap a slice or legend row to see the transactions behind it, or press and hold a slice to preview its category and amount.
+  - **Where It Went**: A donut of lifestyle spending by category for the month you pick. Use the in-app month picker to look back at any month, then tap a slice or legend row to see the transactions behind it, or press and hold a slice to preview its category and amount.
 - **Money Flow** shows the whole month:
   - **Total Inflow** = the month's salary (default or per-month override) plus any extra income entries.
   - **KPI cards** for Spent, Invested, Saved and Left (or Overspent), with percentages of available money.
@@ -125,7 +125,7 @@ expense-tracker/
 │   └── index.css             # Main stylesheet & CSS design system
 ├── js/
 │   ├── app.js                # App entry point, Router, & Navigation setup
-│   ├── config.js             # App constants & versioning (v1.24.0)
+│   ├── config.js             # App constants & versioning (v1.25.0)
 │   ├── db.js                 # Dexie.js setup, schema definitions & CRUD helpers
 │   ├── components/
 │   │   ├── category-grid.js  # Category selection grid
@@ -134,6 +134,7 @@ expense-tracker/
 │   │   ├── expense-form.js   # Add/Edit expense bottom sheet modal
 │   │   ├── expense-list.js   # Render expense lists with edit/delete actions
 │   │   ├── income-form.js    # Add income & per-month salary bottom sheets
+│   │   ├── month-picker.js   # Custom dark month dropdown (no OS select menu)
 │   │   └── toast.js          # Feedback toast notification system
 │   ├── utils/
 │   │   ├── auto-backup.js    # On-device snapshots, retention & restore logic

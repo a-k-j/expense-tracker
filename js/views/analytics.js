@@ -12,6 +12,7 @@ import {
   toDateStr, getTodayStr, dateRange, shortDayDate,
 } from '../utils/date-utils.js';
 import { renderBarChart, renderTrendLine, renderDonutChart, renderGroupedBars } from '../components/chart.js';
+import { createMonthPicker } from '../components/month-picker.js';
 import { openIncomeModal, openSalaryModal } from '../components/income-form.js';
 import { openSliceDetail } from '../components/slice-detail.js';
 import { showToast } from '../components/toast.js';
@@ -193,9 +194,7 @@ async function renderLifestyleBody(body) {
           <div class="analytics-card-title" style="margin:0">🥧 Where It Went</div>
           <div class="mf-month-sub">${monthLong(lifestyleMonth)}</div>
         </div>
-        <select id="lf-month-select" class="form-input mf-month-select" aria-label="Select lifestyle month">
-          ${[...months].reverse().map(m => `<option value="${m}" ${m === lifestyleMonth ? 'selected' : ''}>${monthShort(m)}</option>`).join('')}
-        </select>
+        <div id="lf-month-picker"></div>
       </div>
       <div id="lifestyle-donut"></div>
       <p class="analytics-note" style="margin:12px 0 0">Tap a slice or legend row to see the transactions behind it.</p>
@@ -247,10 +246,16 @@ async function renderLifestyleBody(body) {
 
   renderBarChart(document.getElementById('cat-chart'), categories, monthCatSum);
 
-  document.getElementById('lf-month-select').addEventListener('change', (e) => {
-    lifestyleMonth = e.target.value;
-    renderLifestyleBody(body);
-  });
+  document.getElementById('lf-month-picker').appendChild(createMonthPicker({
+    id: 'lf-month-select',
+    months,
+    value: lifestyleMonth,
+    ariaLabel: 'Select lifestyle month',
+    onChange: (month) => {
+      lifestyleMonth = month;
+      renderLifestyleBody(body);
+    },
+  }));
 }
 
 // ── Money Flow mode ──────────────────────────────────────────────────────────
@@ -361,9 +366,7 @@ async function renderMoneyFlowBody(body) {
         <div class="mf-month-label">${monthLong(moneyFlowMonth)}</div>
         ${incomeTotal > 0 ? '' : '<div class="mf-month-sub">No inflow recorded for this month</div>'}
       </div>
-      <select id="mf-month-select" class="form-input mf-month-select" aria-label="Select month">
-        ${[...months].reverse().map(m => `<option value="${m}" ${m === moneyFlowMonth ? 'selected' : ''}>${monthShort(m)}</option>`).join('')}
-      </select>
+      <div id="mf-month-picker"></div>
     </div>
 
     <!-- Income card -->
@@ -376,8 +379,9 @@ async function renderMoneyFlowBody(body) {
             Salary ${formatAmount(salary)}${otherIncome > 0 ? ` · Other ${formatAmount(otherIncome)}` : ''}
           </div>
           ${rolloverEnabled && carriedIn !== 0 ? `
-          <div class="mf-carry-line ${carriedIn < 0 ? 'negative' : ''}">
-            Carried over ${signedAmount(carriedIn)} · Available ${formatAmount(available)}
+          <div class="mf-carry-line">
+            <span class="mf-carry-amount ${carriedIn > 0 ? 'positive' : 'negative'}">Carried over ${signedAmount(carriedIn)}</span>
+            <span class="mf-carry-available"> · Available ${available < 0 ? `−${formatAmount(Math.abs(available))}` : formatAmount(available)}</span>
           </div>` : ''}
         </div>
         <div class="mf-income-actions">
@@ -477,10 +481,16 @@ async function renderMoneyFlowBody(body) {
   );
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-  document.getElementById('mf-month-select').addEventListener('change', (e) => {
-    moneyFlowMonth = e.target.value;
-    renderMoneyFlowBody(body);
-  });
+  document.getElementById('mf-month-picker').appendChild(createMonthPicker({
+    id: 'mf-month-select',
+    months,
+    value: moneyFlowMonth,
+    ariaLabel: 'Select month',
+    onChange: (month) => {
+      moneyFlowMonth = month;
+      renderMoneyFlowBody(body);
+    },
+  }));
 
   const openSalary = () => openSalaryModal({
     month: moneyFlowMonth,
@@ -590,11 +600,6 @@ function kpiCard(label, value, pct, color) {
 function monthLong(month) {
   const [y, m] = month.split('-').map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-}
-
-function monthShort(month) {
-  const [y, m] = month.split('-').map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 }
 
 function monthLetter(month) {
